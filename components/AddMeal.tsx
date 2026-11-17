@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { AppLogo } from "@/components/AppLogo";
+import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
@@ -58,6 +59,10 @@ export function AddMeal() {
       imageDataUrl: image,
       description: description.trim() || "Meal",
       calories: parsed,
+      protein: result?.protein ?? null,
+      carbs: result?.carbs ?? null,
+      fat: result?.fat ?? null,
+      items: result?.items ?? [],
       confidence: result?.confidence ?? null,
       createdAt: new Date().toISOString(),
     });
@@ -110,7 +115,7 @@ export function AddMeal() {
       {step === "pick" && (
         <div className="flex flex-1 flex-col justify-center gap-4">
           <p className="text-center text-[var(--muted)]">
-            Take a photo or upload one. MiniMax estimates calories; you can edit before saving.
+            Take a photo or upload one. MiniMax estimates calories and a food breakdown; you can edit before saving.
           </p>
           <button
             type="button"
@@ -134,7 +139,7 @@ export function AddMeal() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt="" className="max-h-64 w-full rounded-[1.75rem] object-cover" />
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-          <p className="text-[var(--muted)]">MiniMax is estimating calories…</p>
+          <p className="text-[var(--muted)]">MiniMax is estimating calories and nutrition…</p>
         </div>
       )}
 
@@ -143,8 +148,15 @@ export function AddMeal() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt="" className="max-h-56 w-full rounded-[1.75rem] object-cover" />
           <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-            Confidence · {result.confidence}
+            Result · confidence {result.confidence}
           </p>
+          <NutritionBreakdown
+            calories={Number(calories) || result.calories}
+            protein={result.protein}
+            carbs={result.carbs}
+            fat={result.fat}
+            items={result.items}
+          />
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Description</span>
             <textarea

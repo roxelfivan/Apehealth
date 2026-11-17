@@ -1,10 +1,22 @@
 export type Confidence = "high" | "medium" | "low";
 
+export type FoodItem = {
+  name: string;
+  calories: number;
+  carbs: number;
+  protein?: number;
+  fat?: number;
+};
+
 export type Meal = {
   id: string;
   imageDataUrl: string;
   description: string;
   calories: number;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  items: FoodItem[];
   confidence: Confidence | null;
   createdAt: string;
 };
@@ -12,6 +24,10 @@ export type Meal = {
 export type AnalyzeResult = {
   description: string;
   calories: number;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  items: FoodItem[];
   confidence: Confidence;
 };
 

@@ -1,7 +1,15 @@
+import {
+  asNonNegativeNumber,
+  parseFoodItems,
+  roundCalories,
+  roundGrams,
+  sumItemCalories,
+  sumItemGrams,
+} from "./nutrition";
 import type { AnalyzeResult, Confidence, Settings } from "./types";
 
 const USER_PROMPT =
-  "Estimate calories for this meal photo. Return ONLY a JSON object with these fields: description (string), calories (number, estimated total kcal), confidence (high/medium/low). Be realistic about portion sizes. If multiple items, sum them.";
+  "Estimate calories and nutrition for this meal photo. Return ONLY a JSON object with: description (string), calories (number, total kcal), protein (grams), carbs (grams), fat (grams), confidence (high/medium/low), and items (array of {name, calories, carbs, protein, fat}). Split visible foods into separate items, including oils, dressings, and sauces. Be realistic about portion sizes. Totals should match the sum of items.";
 
 function completionsUrl(endpoint: string): string {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
@@ -96,7 +104,7 @@ export async function analyzeMealPhoto(
   // MiniMax reads photos as image_url data URLs: data:<jpeg|png|gif|webp>;base64,...
   const body: Record<string, unknown> = {
     model,
-    max_completion_tokens: 1200,
+    max_completion_tokens: 2200,
     messages: [
       {
         role: "user",
@@ -159,20 +167,42 @@ export async function analyzeMealPhoto(
   const parsed = extractJson(content) as {
     description?: unknown;
     calories?: unknown;
+    protein?: unknown;
+    carbs?: unknown;
+    carbohydrates?: unknown;
+    fat?: unknown;
+    items?: unknown;
     confidence?: unknown;
   };
 
-  const calories = Number(parsed.calories);
-  if (!Number.isFinite(calories) || calories < 0) {
+  const items = parseFoodItems(parsed.items);
+  const calories =
+    asNonNegativeNumber(parsed.calories) ??
+    (items.length ? sumItemCalories(items) : null);
+  if (calories == null) {
     throw new Error("Could not read a calorie number from MiniMax.");
   }
+
+  const protein =
+    asNonNegativeNumber(parsed.protein) ??
+    (items.some((item) => item.protein != null) ? sumItemGrams(items, "protein") : null);
+  const carbs =
+    asNonNegativeNumber(parsed.carbs ?? parsed.carbohydrates) ??
+    (items.length ? sumItemGrams(items, "carbs") : null);
+  const fat =
+    asNonNegativeNumber(parsed.fat) ??
+    (items.some((item) => item.fat != null) ? sumItemGrams(items, "fat") : null);
 
   return {
     description:
       typeof parsed.description === "string" && parsed.description.trim()
         ? parsed.description.trim()
         : "Meal",
-    calories: Math.round(calories),
+    calories: roundCalories(calories),
+    protein: protein == null ? null : roundGrams(protein),
+    carbs: carbs == null ? null : roundGrams(carbs),
+    fat: fat == null ? null : roundGrams(fat),
+    items,
     confidence: asConfidence(parsed.confidence),
   };
 }

@@ -8,6 +8,7 @@ import { MealList } from "@/components/MealList";
 import { SettingsModal } from "@/components/SettingsModal";
 import { hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
+import { formatGrams, roundGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 
@@ -35,6 +36,12 @@ export function HomeScreen() {
   );
   const todays = mealsForDay(meals, day);
   const eaten = todays.reduce((sum, meal) => sum + meal.calories, 0);
+  const protein = roundGrams(todays.reduce((sum, meal) => sum + (meal.protein ?? 0), 0));
+  const carbs = roundGrams(todays.reduce((sum, meal) => sum + (meal.carbs ?? 0), 0));
+  const fat = roundGrams(todays.reduce((sum, meal) => sum + (meal.fat ?? 0), 0));
+  const hasMacros = todays.some(
+    (meal) => meal.protein != null || meal.carbs != null || meal.fat != null,
+  );
   const remaining = settings.dailyGoal - eaten;
   const progress = Math.min(100, Math.round((eaten / Math.max(settings.dailyGoal, 1)) * 100));
 
@@ -81,6 +88,15 @@ export function HomeScreen() {
             {remaining >= 0 ? `${remaining} remaining` : `${Math.abs(remaining)} over`}
           </span>
         </p>
+        {hasMacros && (
+          <p className="mt-2 text-sm">
+            <span style={{ color: "var(--protein)" }}>{formatGrams(protein)} protein</span>
+            {" · "}
+            <span style={{ color: "var(--carb)" }}>{formatGrams(carbs)} carb</span>
+            {" · "}
+            <span style={{ color: "var(--fat)" }}>{formatGrams(fat)} fat</span>
+          </p>
+        )}
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--chip)]">
           <div
             className={`h-full rounded-full ${remaining < 0 ? "bg-[var(--over)]" : "bg-[var(--accent)]"}`}
