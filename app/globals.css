@@ -13,6 +13,9 @@
   --ok: #246338;
   --over: #b14228;
   --ring: #b57a0c;
+  --protein: #2f7ee8;
+  --carb: #e39a12;
+  --fat: #e15a8a;
   --header-height: 4.5rem;
   --nav-height: 5.5rem;
 }
@@ -38,6 +41,9 @@
     --ok: #86d396;
     --over: #f19778;
     --ring: #f0b429;
+    --protein: #6ea8ff;
+    --carb: #f0b429;
+    --fat: #f08ab4;
   }
 }
 

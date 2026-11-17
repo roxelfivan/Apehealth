@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
@@ -12,7 +13,7 @@ import {
   updateMeal,
 } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
-import type { Meal } from "@/lib/types";
+import type { AnalyzeResult, Meal } from "@/lib/types";
 
 type Props = {
   meal: Meal;
@@ -29,6 +30,10 @@ export function MealEditor({ meal, onClose }: Props) {
   const [calories, setCalories] = useState(String(meal.calories));
   const [when, setWhen] = useState(toDatetimeLocalValue(meal.createdAt));
   const [confidence, setConfidence] = useState(meal.confidence);
+  const [protein, setProtein] = useState(meal.protein);
+  const [carbs, setCarbs] = useState(meal.carbs);
+  const [fat, setFat] = useState(meal.fat);
+  const [items, setItems] = useState(meal.items);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,10 +49,14 @@ export function MealEditor({ meal, onClose }: Props) {
       const dataUrl = await fileToApiDataUrl(file);
       setImage(dataUrl);
       setAnalyzing(true);
-      const estimate = await analyzeMealPhoto(dataUrl, settings);
+      const estimate: AnalyzeResult = await analyzeMealPhoto(dataUrl, settings);
       setDescription(estimate.description);
       setCalories(String(estimate.calories));
       setConfidence(estimate.confidence);
+      setProtein(estimate.protein);
+      setCarbs(estimate.carbs);
+      setFat(estimate.fat);
+      setItems(estimate.items);
     } catch (caught) {
       setImage(meal.imageDataUrl);
       setError(caught instanceof Error ? caught.message : "Could not analyze this photo.");
@@ -61,6 +70,10 @@ export function MealEditor({ meal, onClose }: Props) {
       imageDataUrl: image,
       description,
       calories: Math.max(0, Math.round(Number(calories) || 0)),
+      protein,
+      carbs,
+      fat,
+      items,
       confidence,
       createdAt: fromDatetimeLocalValue(when, meal.createdAt),
     });
@@ -117,7 +130,7 @@ export function MealEditor({ meal, onClose }: Props) {
         {analyzing ? (
           <div className="mb-4 flex items-center gap-3 text-sm text-[var(--muted)]">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-            MiniMax is re-estimating calories…
+            MiniMax is re-estimating calories and nutrition…
           </div>
         ) : (
           <div className="mb-4 flex gap-2">
@@ -140,9 +153,19 @@ export function MealEditor({ meal, onClose }: Props) {
 
         {confidence && (
           <p className="mb-3 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-            Confidence · {confidence}
+            Result · confidence {confidence}
           </p>
         )}
+
+        <div className="mb-4">
+          <NutritionBreakdown
+            calories={Number(calories) || meal.calories}
+            protein={protein}
+            carbs={carbs}
+            fat={fat}
+            items={items}
+          />
+        </div>
 
         <label className="mb-3 block">
           <span className="mb-1.5 block text-sm font-medium">Description</span>

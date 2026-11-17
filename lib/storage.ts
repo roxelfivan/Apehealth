@@ -1,4 +1,5 @@
 import { emitStoreChange } from "./events";
+import { asNonNegativeNumber, parseFoodItems, roundCalories, roundGrams } from "./nutrition";
 import type { Meal, Settings } from "./types";
 
 const MEALS_KEY = "apehealth.meals";
@@ -29,9 +30,43 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
+function normalizeMeal(value: unknown): Meal | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string" || !record.id) return null;
+  const calories = asNonNegativeNumber(record.calories) ?? 0;
+  const protein = asNonNegativeNumber(record.protein);
+  const carbs = asNonNegativeNumber(record.carbs);
+  const fat = asNonNegativeNumber(record.fat);
+  const items = parseFoodItems(record.items);
+  return {
+    id: record.id,
+    imageDataUrl: typeof record.imageDataUrl === "string" ? record.imageDataUrl : "",
+    description:
+      typeof record.description === "string" && record.description.trim()
+        ? record.description.trim()
+        : "Meal",
+    calories: roundCalories(calories),
+    protein: protein == null ? null : roundGrams(protein),
+    carbs: carbs == null ? null : roundGrams(carbs),
+    fat: fat == null ? null : roundGrams(fat),
+    items,
+    confidence:
+      record.confidence === "high" ||
+      record.confidence === "medium" ||
+      record.confidence === "low"
+        ? record.confidence
+        : null,
+    createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
+  };
+}
+
 export function loadMeals(): Meal[] {
-  const meals = readJson<Meal[]>(MEALS_KEY, []);
-  return Array.isArray(meals) ? meals : [];
+  const meals = readJson<unknown[]>(MEALS_KEY, []);
+  if (!Array.isArray(meals)) return [];
+  return meals
+    .map(normalizeMeal)
+    .filter((meal): meal is Meal => meal != null);
 }
 
 export function saveMeals(meals: Meal[]): void {
@@ -58,7 +93,26 @@ export function updateMeal(id: string, patch: MealPatch): Meal[] {
     if (meal.id !== id) return meal;
     const description = (patch.description ?? meal.description).trim() || "Meal";
     const calories = Math.max(0, Math.round(patch.calories ?? meal.calories));
-    return { ...meal, ...patch, description, calories };
+    const protein =
+      patch.protein === undefined
+        ? meal.protein
+        : patch.protein == null
+          ? null
+          : roundGrams(Math.max(0, patch.protein));
+    const carbs =
+      patch.carbs === undefined
+        ? meal.carbs
+        : patch.carbs == null
+          ? null
+          : roundGrams(Math.max(0, patch.carbs));
+    const fat =
+      patch.fat === undefined
+        ? meal.fat
+        : patch.fat == null
+          ? null
+          : roundGrams(Math.max(0, patch.fat));
+    const items = patch.items ?? meal.items;
+    return { ...meal, ...patch, description, calories, protein, carbs, fat, items };
   });
   saveMeals(next);
   return next;

@@ -9,6 +9,7 @@ import { PlusIcon } from "@/components/icons";
 import { SettingsModal } from "@/components/SettingsModal";
 import { hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
+import { formatGrams, roundGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
 
 function formatDay(day: string): string {
@@ -97,6 +98,12 @@ export function HomeScreen() {
   );
   const todays = mealsForDay(meals, day);
   const eaten = todays.reduce((sum, meal) => sum + meal.calories, 0);
+  const protein = roundGrams(todays.reduce((sum, meal) => sum + (meal.protein ?? 0), 0));
+  const carbs = roundGrams(todays.reduce((sum, meal) => sum + (meal.carbs ?? 0), 0));
+  const fat = roundGrams(todays.reduce((sum, meal) => sum + (meal.fat ?? 0), 0));
+  const hasMacros = todays.some(
+    (meal) => meal.protein != null || meal.carbs != null || meal.fat != null,
+  );
   const remaining = settings.dailyGoal - eaten;
 
   return (
@@ -109,6 +116,15 @@ export function HomeScreen() {
       <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_1fr] lg:items-start lg:gap-8">
         <section className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--card)] p-5 shadow-[0_18px_50px_rgba(40,24,8,0.08)] lg:sticky lg:top-6">
           <CalorieRing eaten={eaten} goal={settings.dailyGoal} remaining={remaining} />
+          {hasMacros ? (
+            <p className="mt-4 text-center text-sm sm:text-left">
+              <span style={{ color: "var(--protein)" }}>{formatGrams(protein)} protein</span>
+              {" · "}
+              <span style={{ color: "var(--carb)" }}>{formatGrams(carbs)} carb</span>
+              {" · "}
+              <span style={{ color: "var(--fat)" }}>{formatGrams(fat)} fat</span>
+            </p>
+          ) : null}
         </section>
 
         <section>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteMeal } from "@/lib/storage";
+import { formatGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
 
 export function formatMealTime(iso: string): string {
@@ -54,6 +55,13 @@ export function MealList({ meals, onEdit, className }: Props) {
               <p className="mt-1 text-sm text-[var(--muted)]">
                 {meal.calories} kcal · {formatMealTime(meal.createdAt)}
               </p>
+              {meal.protein != null || meal.carbs != null || meal.fat != null ? (
+                <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+                  {meal.protein != null ? `${formatGrams(meal.protein)} P` : "— P"} ·{" "}
+                  {meal.carbs != null ? `${formatGrams(meal.carbs)} C` : "— C"} ·{" "}
+                  {meal.fat != null ? `${formatGrams(meal.fat)} F` : "— F"}
+                </p>
+              ) : null}
               {confirming ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
