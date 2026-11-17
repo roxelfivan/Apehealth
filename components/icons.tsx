@@ -106,3 +106,20 @@ export function ChevronIcon({ className }: IconProps) {
     </Icon>
   );
 }
+
+export function ChartIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M4 19h16M7 16v-5M12 16V7M17 16v-8" />
+    </Icon>
+  );
+}
+
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M4 20h4l10-10-4-4L4 16z" />
+      <path d="m13 7 4 4" />
+    </Icon>
+  );
+}

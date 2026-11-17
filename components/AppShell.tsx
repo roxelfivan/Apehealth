@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { GearIcon, HouseIcon, PlusIcon } from "@/components/icons";
+import { AppLogo } from "@/components/AppLogo";
+import { ChartIcon, GearIcon, HouseIcon, PlusIcon } from "@/components/icons";
 import { APP_VERSION } from "@/lib/version";
 
 type Props = {
-  current: "home" | "add";
+  current: "home" | "add" | "history";
   title: string;
   subtitle?: string;
   onOpenSettings: () => void;
@@ -14,7 +15,7 @@ type Props = {
 };
 
 const navItem =
-  "flex min-h-12 min-w-[4.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px] font-medium text-[var(--muted)] transition-colors duration-200 hover:bg-[var(--chip)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]";
+  "flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[11px] font-medium text-[var(--muted)] transition-colors duration-200 hover:bg-[var(--chip)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]";
 
 export function AppShell({ current, title, subtitle, onOpenSettings, children }: Props) {
   return (
@@ -27,25 +28,28 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
       </a>
 
       <header className="mb-5 flex items-center justify-between gap-3 lg:mb-8">
-        <div className="min-w-0">
-          {subtitle ? (
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
-              {subtitle}
-            </p>
-          ) : null}
-          <h1 className="font-[family-name:var(--font-display)] text-[1.85rem] leading-none tracking-tight sm:text-[2.15rem]">
-            {title}
-          </h1>
-          {current === "home" ? (
-            <p className="mt-1 text-xs text-[var(--muted)]">v{APP_VERSION} · stays on this device</p>
-          ) : null}
+        <div className="flex min-w-0 items-center gap-3">
+          {current === "home" ? <AppLogo className="h-11 w-auto shrink-0 select-none" /> : null}
+          <div className="min-w-0">
+            {subtitle ? (
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
+                {subtitle}
+              </p>
+            ) : null}
+            <h1 className="font-[family-name:var(--font-display)] text-[1.85rem] leading-none tracking-tight sm:text-[2.15rem]">
+              {title}
+            </h1>
+            {current === "home" ? (
+              <p className="mt-1 text-xs text-[var(--muted)]">v{APP_VERSION} · stays on this device</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          {current !== "add" ? (
-            <Link href="/add" className="btn-primary">
-              <PlusIcon className="h-5 w-5" />
-              Add meal
+          {current !== "history" ? (
+            <Link href="/history" className="btn-secondary">
+              <ChartIcon className="h-5 w-5" />
+              History
             </Link>
           ) : (
             <Link href="/" className="btn-secondary">
@@ -53,19 +57,17 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
               Today
             </Link>
           )}
+          {current !== "add" ? (
+            <Link href="/add" className="btn-primary">
+              <PlusIcon className="h-5 w-5" />
+              Add meal
+            </Link>
+          ) : null}
           <button type="button" className="btn-secondary" onClick={onOpenSettings}>
             <GearIcon className="h-5 w-5" />
             Settings
           </button>
         </div>
-
-        {current === "add" ? (
-          <Link href="/" className="btn-icon lg:hidden" aria-label="Back to today">
-            <HouseIcon className="h-5 w-5" />
-          </Link>
-        ) : (
-          <span className="lg:hidden" aria-hidden="true" />
-        )}
       </header>
 
       <main id="main" className="flex min-h-0 flex-1 flex-col">
@@ -73,10 +75,10 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:hidden"
         aria-label="Primary"
       >
-        <div className="mx-auto flex max-w-md items-end gap-1">
+        <div className="mx-auto flex max-w-lg items-end gap-1">
           <Link
             href="/"
             className={`${navItem} ${current === "home" ? "bg-[var(--chip)] text-[var(--foreground)]" : ""}`}
@@ -84,6 +86,14 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
           >
             <HouseIcon className="h-6 w-6" />
             Today
+          </Link>
+          <Link
+            href="/history"
+            className={`${navItem} ${current === "history" ? "bg-[var(--chip)] text-[var(--foreground)]" : ""}`}
+            aria-current={current === "history" ? "page" : undefined}
+          >
+            <ChartIcon className="h-6 w-6" />
+            History
           </Link>
           <Link
             href="/add"

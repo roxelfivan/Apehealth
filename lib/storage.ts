@@ -51,6 +51,82 @@ export function deleteMeal(id: string): Meal[] {
   return next;
 }
 
+export type MealPatch = Partial<Omit<Meal, "id">>;
+
+export function updateMeal(id: string, patch: MealPatch): Meal[] {
+  const next = loadMeals().map((meal) => {
+    if (meal.id !== id) return meal;
+    const description = (patch.description ?? meal.description).trim() || "Meal";
+    const calories = Math.max(0, Math.round(patch.calories ?? meal.calories));
+    return { ...meal, ...patch, description, calories };
+  });
+  saveMeals(next);
+  return next;
+}
+
+export type DayGroup = {
+  day: string;
+  meals: Meal[];
+};
+
+export function mealsByDay(meals: Meal[]): DayGroup[] {
+  const map = new Map<string, Meal[]>();
+  for (const meal of meals) {
+    const parsed = new Date(meal.createdAt);
+    const day = Number.isNaN(parsed.getTime()) ? meal.createdAt.slice(0, 10) : todayKey(parsed);
+    const list = map.get(day);
+    if (list) list.push(meal);
+    else map.set(day, [meal]);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => (a < b ? 1 : -1))
+    .map(([day, grouped]) => ({ day, meals: grouped }));
+}
+
+export type DailyTotal = {
+  day: string;
+  calories: number;
+  mealCount: number;
+};
+
+export function dailyTotals(meals: Meal[], days: number, end: Date = new Date()): DailyTotal[] {
+  const count = Math.max(1, Math.round(days));
+  const totals = new Map<string, DailyTotal>();
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const date = new Date(end.getFullYear(), end.getMonth(), end.getDate() - i);
+    const day = todayKey(date);
+    keys.push(day);
+    totals.set(day, { day, calories: 0, mealCount: 0 });
+  }
+  for (const meal of meals) {
+    const parsed = new Date(meal.createdAt);
+    const day = Number.isNaN(parsed.getTime()) ? meal.createdAt.slice(0, 10) : todayKey(parsed);
+    const row = totals.get(day);
+    if (!row) continue;
+    row.calories += meal.calories;
+    row.mealCount += 1;
+  }
+  return keys.map((day) => totals.get(day)!);
+}
+
+export function toDatetimeLocalValue(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function fromDatetimeLocalValue(value: string, fallbackIso: string): string {
+  if (!value) return fallbackIso;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return fallbackIso;
+  return parsed.toISOString();
+}
+
 function readApiKey(ephemeral: boolean): string {
   if (typeof window === "undefined") return "";
   const fromSession = sessionStorage.getItem(API_KEY_SESSION) ?? "";
@@ -97,7 +173,11 @@ export function todayKey(date: Date): string {
 
 export function mealsForDay(meals: Meal[], day: string): Meal[] {
   if (!day) return [];
-  return meals.filter((meal) => meal.createdAt.slice(0, 10) === day);
+  return meals.filter((meal) => {
+    const parsed = new Date(meal.createdAt);
+    const key = Number.isNaN(parsed.getTime()) ? meal.createdAt.slice(0, 10) : todayKey(parsed);
+    return key === day;
+  });
 }
 
 export function hasApiKey(settings: Settings = loadSettings()): boolean {

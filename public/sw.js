@@ -1,5 +1,5 @@
-const CACHE = "apehealth-v1";
-const PRECACHE = ["/", "/add", "/manifest.json", "/icons/icon-192.png"];
+const CACHE = "apehealth-v2";
+const PRECACHE = ["/", "/add", "/history", "/manifest.json", "/icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -1,0 +1,104 @@
+"use client";
+
+import { useState } from "react";
+import { PencilIcon, TrashIcon } from "@/components/icons";
+import { deleteMeal } from "@/lib/storage";
+import type { Meal } from "@/lib/types";
+
+export function formatMealTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function formatMealDay(day: string): string {
+  const parsed = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return day;
+  return parsed.toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+type Props = {
+  meals: Meal[];
+  onEdit: (meal: Meal) => void;
+  className?: string;
+};
+
+export function MealList({ meals, onEdit, className }: Props) {
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  if (meals.length === 0) return null;
+
+  return (
+    <ul className={`space-y-3 ${className ?? ""}`}>
+      {meals.map((meal) => {
+        const confirming = pendingDelete === meal.id;
+        return (
+          <li
+            key={meal.id}
+            className="flex gap-3 rounded-[1.4rem] border border-[var(--line)] bg-[var(--card)] p-3"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={meal.imageDataUrl}
+              alt=""
+              className="h-20 w-20 shrink-0 rounded-2xl object-cover"
+              width={80}
+              height={80}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium leading-snug [overflow-wrap:anywhere]">{meal.description}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {meal.calories} kcal · {formatMealTime(meal.createdAt)}
+              </p>
+              {confirming ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn-danger min-h-10 px-3 text-sm"
+                    onClick={() => {
+                      deleteMeal(meal.id);
+                      setPendingDelete(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary min-h-10 px-3 text-sm"
+                    onClick={() => setPendingDelete(null)}
+                  >
+                    Keep
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            {!confirming ? (
+              <div className="flex shrink-0 flex-col gap-2">
+                <button
+                  type="button"
+                  className="btn-icon h-12 w-12"
+                  aria-label={`Edit ${meal.description}`}
+                  onClick={() => onEdit(meal)}
+                >
+                  <PencilIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="btn-icon h-12 w-12"
+                  aria-label={`Delete ${meal.description}`}
+                  onClick={() => setPendingDelete(meal.id)}
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
