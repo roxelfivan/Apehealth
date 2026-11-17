@@ -3,13 +3,14 @@
 import { useRef, useState } from "react";
 import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
-import { fileToApiDataUrl } from "@/lib/image";
+import { compressDataUrlForStorage, fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
 import { useTranslator } from "@/lib/i18n/useTranslator";
 import {
   fromDatetimeLocalValue,
   hasApiKey,
   saveSettings,
+  StorageFullError,
   toDatetimeLocalValue,
   updateMeal,
 } from "@/lib/storage";
@@ -37,6 +38,7 @@ export function MealEditor({ meal, onClose }: Props) {
   const [fat, setFat] = useState(meal.fat);
   const [items, setItems] = useState(meal.items);
   const [analyzing, setAnalyzing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onFile(file: File | undefined) {
@@ -67,19 +69,34 @@ export function MealEditor({ meal, onClose }: Props) {
     }
   }
 
-  function save() {
-    updateMeal(meal.id, {
-      imageDataUrl: image,
-      description,
-      calories: Math.max(0, Math.round(Number(calories) || 0)),
-      protein,
-      carbs,
-      fat,
-      items,
-      confidence,
-      createdAt: fromDatetimeLocalValue(when, meal.createdAt),
-    });
-    onClose();
+  async function save() {
+    if (analyzing || saving) return;
+    setError(null);
+    setSaving(true);
+    try {
+      updateMeal(meal.id, {
+        imageDataUrl: await compressDataUrlForStorage(image),
+        description,
+        calories: Math.max(0, Math.round(Number(calories) || 0)),
+        protein,
+        carbs,
+        fat,
+        items,
+        confidence,
+        createdAt: fromDatetimeLocalValue(when, meal.createdAt),
+      });
+      onClose();
+    } catch (caught) {
+      setError(
+        caught instanceof StorageFullError
+          ? t("errors.storageFull")
+          : caught instanceof Error
+            ? caught.message
+            : t("errors.couldNotSave"),
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -205,8 +222,8 @@ export function MealEditor({ meal, onClose }: Props) {
 
         <button
           type="button"
-          onClick={save}
-          disabled={analyzing}
+          onClick={() => void save()}
+          disabled={analyzing || saving}
           className="btn-primary w-full disabled:opacity-60"
         >
           {t("editor.saveChanges")}

@@ -6,10 +6,10 @@ import { AppShell } from "@/components/AppShell";
 import { CameraIcon, ImageIcon } from "@/components/icons";
 import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
-import { fileToApiDataUrl } from "@/lib/image";
+import { compressDataUrlForStorage, fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
 import { useTranslator } from "@/lib/i18n/useTranslator";
-import { addMeal, hasApiKey, saveSettings } from "@/lib/storage";
+import { addMeal, hasApiKey, saveSettings, StorageFullError } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
 import type { AnalyzeResult } from "@/lib/types";
 
@@ -30,6 +30,7 @@ export function AddMeal() {
   const [calories, setCalories] = useState("");
   const [calorieError, setCalorieError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
@@ -65,26 +66,40 @@ export function AddMeal() {
     }
   }
 
-  function save() {
-    if (!image) return;
+  async function save() {
+    if (!image || saving) return;
     const parsed = Number(calories);
     if (!Number.isFinite(parsed) || parsed < 0) {
       setCalorieError(t("errors.calorieAmount"));
       return;
     }
-    addMeal({
-      id: crypto.randomUUID(),
-      imageDataUrl: image,
-      description: description.trim() || t("common.meal"),
-      calories: Math.round(parsed),
-      protein: result?.protein ?? null,
-      carbs: result?.carbs ?? null,
-      fat: result?.fat ?? null,
-      items: result?.items ?? [],
-      confidence: result?.confidence ?? null,
-      createdAt: new Date().toISOString(),
-    });
-    router.push("/");
+    setError(null);
+    setSaving(true);
+    try {
+      addMeal({
+        id: crypto.randomUUID(),
+        imageDataUrl: await compressDataUrlForStorage(image),
+        description: description.trim() || t("common.meal"),
+        calories: Math.round(parsed),
+        protein: result?.protein ?? null,
+        carbs: result?.carbs ?? null,
+        fat: result?.fat ?? null,
+        items: result?.items ?? [],
+        confidence: result?.confidence ?? null,
+        createdAt: new Date().toISOString(),
+      });
+      router.push("/");
+    } catch (caught) {
+      setError(
+        caught instanceof StorageFullError
+          ? t("errors.storageFull")
+          : caught instanceof Error
+            ? caught.message
+            : t("errors.couldNotSave"),
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -194,10 +209,12 @@ export function AddMeal() {
 
       {step === "review" && image && result && (
         <form
+          noValidate
           className="grid flex-1 gap-6 lg:grid-cols-2 lg:items-start"
           onSubmit={(event) => {
             event.preventDefault();
-            save();
+            event.stopPropagation();
+            void save();
           }}
         >
           <div className="flex flex-col gap-4">
@@ -233,6 +250,7 @@ export function AddMeal() {
               <input
                 type="number"
                 min={0}
+                lang="en"
                 inputMode="numeric"
                 value={calories}
                 aria-invalid={calorieError ? true : undefined}
@@ -249,8 +267,8 @@ export function AddMeal() {
                 </p>
               ) : null}
             </label>
-            <div className="mt-auto flex flex-col gap-3 pt-2">
-              <button type="submit" className="btn-primary h-14 w-full">
+            <div className="relative z-10 mt-auto flex flex-col gap-3 pt-2">
+              <button type="submit" disabled={saving} className="btn-primary h-14 w-full disabled:opacity-60">
                 {t("add.saveMeal")}
               </button>
               <button

@@ -23,7 +23,7 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
   const { t } = useTranslator();
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pb-10">
+    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:pb-10">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-[var(--card)] focus:px-3 focus:py-2 focus:ring-2 focus:ring-[var(--ring)]"

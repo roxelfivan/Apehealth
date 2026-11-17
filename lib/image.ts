@@ -56,12 +56,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-export async function fileToCompressedDataUrl(
-  file: File,
-  maxSide = 1280,
-  quality = 0.82,
-): Promise<string> {
-  const bitmap = await createImageBitmap(file);
+function bitmapToJpegDataUrl(bitmap: ImageBitmap, maxSide: number, quality: number): string {
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -71,8 +66,51 @@ export async function fileToCompressedDataUrl(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not read this photo.");
   ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+export async function fileToCompressedDataUrl(
+  file: File,
+  maxSide = 1280,
+  quality = 0.82,
+): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    return bitmapToJpegDataUrl(bitmap, maxSide, quality);
+  } finally {
+    bitmap.close();
+  }
+}
+
+/** Keep stored meal photos well under typical localStorage limits. */
+const STORAGE_MAX_CHARS = 180_000;
+
+/**
+ * Shrink a data URL for on-device storage. Analysis can use a larger original;
+ * only the saved copy needs to fit in localStorage.
+ */
+export async function compressDataUrlForStorage(dataUrl: string): Promise<string> {
+  if (dataUrl.length <= STORAGE_MAX_CHARS) return dataUrl;
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    const bitmap = await createImageBitmap(blob);
+    try {
+      let best = dataUrl;
+      for (const [maxSide, quality] of [
+        [960, 0.72],
+        [720, 0.64],
+        [480, 0.55],
+      ] as const) {
+        best = bitmapToJpegDataUrl(bitmap, maxSide, quality);
+        if (best.length <= STORAGE_MAX_CHARS) return best;
+      }
+      return best;
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return dataUrl;
+  }
 }
 
 /** Data URL MiniMax documents for OpenAI-compatible image_url: original JPEG/PNG/GIF/WEBP bytes. */

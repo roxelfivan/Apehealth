@@ -13,7 +13,7 @@ import {
   DEFAULT_ENDPOINT,
   DEFAULT_MODEL,
   MODEL_PRESETS,
-  saveSettings,
+  setLocale,
 } from "@/lib/storage";
 import type { Settings } from "@/lib/types";
 
@@ -166,7 +166,7 @@ function SettingsForm({
                   // AI analysis) follows the newly chosen language. Only the
                   // locale is persisted here — the rest of the form stays a
                   // draft until Save is pressed.
-                  saveSettings({ ...initial, locale: option });
+                  setLocale(option);
                 }}
               >
                 {LOCALE_NAMES[option]}

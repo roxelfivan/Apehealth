@@ -76,8 +76,29 @@ export function loadMeals(): Meal[] {
     .filter((meal): meal is Meal => meal != null);
 }
 
+export class StorageFullError extends Error {
+  constructor() {
+    super("StorageFull");
+    this.name = "StorageFullError";
+  }
+}
+
+function isQuotaError(caught: unknown): boolean {
+  if (!(caught instanceof DOMException)) return false;
+  return (
+    caught.name === "QuotaExceededError" ||
+    caught.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    caught.code === 22
+  );
+}
+
 export function saveMeals(meals: Meal[]): void {
-  localStorage.setItem(MEALS_KEY, JSON.stringify(meals));
+  try {
+    localStorage.setItem(MEALS_KEY, JSON.stringify(meals));
+  } catch (caught) {
+    if (isQuotaError(caught)) throw new StorageFullError();
+    throw caught;
+  }
   emitStoreChange();
 }
 
@@ -208,6 +229,12 @@ export function loadLocale(): Locale {
 
 function saveLocale(locale: Locale): void {
   localStorage.setItem(LOCALE_KEY, JSON.stringify(locale));
+}
+
+/** Persist only the UI language — never rewrite API keys or other settings. */
+export function setLocale(locale: Locale): void {
+  saveLocale(locale);
+  emitStoreChange();
 }
 
 export function loadSettings(): Settings {

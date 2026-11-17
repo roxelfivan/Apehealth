@@ -131,6 +131,8 @@ export const en = {
     requestFailed: "MiniMax request failed ({status}).",
     emptyResponse: "MiniMax returned an empty response.",
     noCalories: "Could not read a calorie number from MiniMax.",
+    couldNotSave: "Could not save this meal.",
+    storageFull: "Not enough space on this device to save the meal photo. Try a smaller photo.",
   },
 };
 
@@ -268,5 +270,7 @@ export const zhHant: Dictionary = {
     requestFailed: "MiniMax 請求失敗（{status}）。",
     emptyResponse: "MiniMax 回傳了空白內容。",
     noCalories: "無法從 MiniMax 的回應中讀取熱量數值。",
+    couldNotSave: "無法儲存這筆餐點。",
+    storageFull: "這個裝置沒有足夠空間儲存餐點照片，請改用較小的照片再試一次。",
   },
 };

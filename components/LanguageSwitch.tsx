@@ -9,7 +9,7 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { useTranslator } from "@/lib/i18n/useTranslator";
-import { saveSettings } from "@/lib/storage";
+import { setLocale } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
 
 type Props = {
@@ -56,9 +56,9 @@ export function LanguageSwitch({ compact = false, className }: Props) {
   }, [open]);
 
   function choose(next: Locale) {
-    // Persist the whole settings object so the store re-renders immediately
-    // with the new locale, then close the menu.
-    saveSettings({ ...settings, locale: next });
+    // Only write the locale. Rewriting the full settings object here could
+    // clobber the API key if this snapshot was stale after a language change.
+    setLocale(next);
     setOpen(false);
     buttonRef.current?.focus();
   }
