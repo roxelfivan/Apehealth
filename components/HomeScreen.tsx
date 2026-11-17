@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { deleteMeal, hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
+import { APP_VERSION } from "@/lib/version";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], {
@@ -49,6 +50,7 @@ export function HomeScreen() {
           <h1 className="font-[family-name:var(--font-display)] text-[2.1rem] leading-none tracking-tight">
             Apehealth
           </h1>
+          <p className="mt-1 font-mono text-[10px] text-[var(--muted)]">v{APP_VERSION}</p>
         </div>
         <button
           type="button"

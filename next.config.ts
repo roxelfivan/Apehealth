@@ -1,6 +1,17 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { NextConfig } from "next";
 
+const APP_VERSION = (
+  JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as {
+    version: string;
+  }
+).version;
+
 const nextConfig: NextConfig = {
+  env: {
+    APP_VERSION,
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
