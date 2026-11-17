@@ -1,7 +1,7 @@
 import type { AnalyzeResult, Confidence, Settings } from "./types";
 
 const USER_PROMPT =
-  "Look at the attached meal photo and estimate calories for the whole meal. Return ONLY a JSON object with these fields: description (string), calories (number, estimated total for the whole meal), confidence (high/medium/low). Be realistic about portion sizes. If multiple items, sum them.";
+  "This message includes a meal photo. Describe the food and portions you see, then estimate calories for the whole meal. Return ONLY a JSON object with these fields: description (string), calories (number, estimated total kcal), confidence (high/medium/low). Be realistic. If multiple items, sum them.";
 
 type ImageBytes = { mediaType: string; data: string; dataUrl: string };
 
@@ -182,11 +182,11 @@ function openaiBody(model: string, image: ImageBytes): Record<string, unknown> {
       {
         role: "user",
         content: [
+          { type: "text", text: USER_PROMPT },
           {
             type: "image_url",
-            image_url: { url: image.dataUrl, detail: "low" },
+            image_url: { url: image.dataUrl },
           },
-          { type: "text", text: USER_PROMPT },
         ],
       },
     ],
@@ -204,25 +204,21 @@ function anthropicBody(model: string, image: ImageBytes): Record<string, unknown
       {
         role: "user",
         content: [
+          { type: "text", text: USER_PROMPT },
           {
             type: "image",
             source: {
               type: "base64",
               media_type: image.mediaType,
               data: image.data,
-              detail: "low",
             },
           },
-          { type: "text", text: USER_PROMPT },
         ],
       },
     ],
   };
   if (usesFlash) {
     body.output_config = { effort: "low" };
-  } else {
-    // Anthropic MiniMax-M3 leaves thinking off unless enabled; vision needs it.
-    body.thinking = { type: "adaptive" };
   }
   return body;
 }
