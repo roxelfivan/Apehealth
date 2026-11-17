@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { AppLogo } from "@/components/AppLogo";
 import { SettingsModal } from "@/components/SettingsModal";
 import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
@@ -65,8 +66,9 @@ export function AddMeal() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <header className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-[var(--muted)]">
+      <header className="mb-6 flex items-center justify-between gap-3">
+        <Link href="/" className="flex min-w-0 items-center gap-2 text-sm text-[var(--muted)]">
+          <AppLogo className="h-8 w-auto shrink-0 select-none" />
           ← Home
         </Link>
         <h1 className="font-[family-name:var(--font-display)] text-xl">Add meal</h1>

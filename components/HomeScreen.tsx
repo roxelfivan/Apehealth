@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { AppLogo } from "@/components/AppLogo";
 import { SettingsModal } from "@/components/SettingsModal";
 import { deleteMeal, hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
@@ -42,15 +43,18 @@ export function HomeScreen() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--muted)]">
-            Today{day ? ` · ${day}` : ""}
-          </p>
-          <h1 className="font-[family-name:var(--font-display)] text-[2.1rem] leading-none tracking-tight">
-            Apehealth
-          </h1>
-          <p className="mt-1 font-mono text-[10px] text-[var(--muted)]">v{APP_VERSION}</p>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <AppLogo />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--muted)]">
+              Today{day ? ` · ${day}` : ""}
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] text-[2.1rem] leading-none tracking-tight">
+              Apehealth
+            </h1>
+            <p className="mt-1 font-mono text-[10px] text-[var(--muted)]">v{APP_VERSION}</p>
+          </div>
         </div>
         <button
           type="button"
