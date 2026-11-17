@@ -17,17 +17,26 @@ function assertSafeEndpoint(endpoint: string): string {
   } catch {
     throw new Error("API endpoint is not a valid URL.");
   }
+  const host = parsed.hostname.toLowerCase();
   const isLocal =
-    parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "[::1]" ||
+    host === "::1";
   if (parsed.protocol !== "https:" && !(isLocal && parsed.protocol === "http:")) {
     throw new Error("API endpoint must be HTTPS (or localhost).");
   }
   return parsed.toString();
 }
 
+function stripThink(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
 function extractJson(text: string): unknown {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const raw = (fenced?.[1] ?? text).trim();
+  const cleaned = stripThink(text);
+  const fenced = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = (fenced?.[1] ?? cleaned).trim();
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start === -1 || end === -1) {
@@ -39,6 +48,32 @@ function extractJson(text: string): unknown {
 function asConfidence(value: unknown): Confidence {
   if (value === "high" || value === "medium" || value === "low") return value;
   return "medium";
+}
+
+function messageText(message: {
+  content?: unknown;
+  reasoning_content?: unknown;
+}): string {
+  const { content } = message;
+  if (typeof content === "string" && content.trim()) return content;
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object" && "text" in part) {
+          const text = (part as { text?: unknown }).text;
+          return typeof text === "string" ? text : "";
+        }
+        return "";
+      })
+      .join("\n")
+      .trim();
+    if (joined) return joined;
+  }
+  if (typeof message.reasoning_content === "string") {
+    return message.reasoning_content;
+  }
+  return "";
 }
 
 export async function analyzeMealPhoto(
@@ -54,6 +89,10 @@ export async function analyzeMealPhoto(
   const model = settings.model.trim() || "MiniMax-M3";
   const usesFlash = /m3\.1/i.test(model);
 
+  // OpenAI-compatible like Apeditor, but the user turn is multimodal.
+  // Omit thinking (Apeditor does not send it). Forcing thinking off on M3
+  // skips image understanding. Keep detail low so we do not send a
+  // higher-res copy of the meal photo than Settings already allowed.
   const body: Record<string, unknown> = {
     model,
     messages: [
@@ -76,8 +115,6 @@ export async function analyzeMealPhoto(
 
   if (usesFlash) {
     body.reasoning_effort = "low";
-  } else {
-    body.thinking = { type: "disabled" };
   }
 
   const response = await fetch(url, {
@@ -91,7 +128,9 @@ export async function analyzeMealPhoto(
 
   const payload = (await response.json().catch(() => null)) as
     | {
-        choices?: Array<{ message?: { content?: string } }>;
+        choices?: Array<{
+          message?: { content?: unknown; reasoning_content?: unknown };
+        }>;
         error?: { message?: string };
         base_resp?: { status_msg?: string };
       }
@@ -105,8 +144,10 @@ export async function analyzeMealPhoto(
     throw new Error(message);
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
-  if (!content?.trim()) {
+  const content = payload?.choices?.[0]?.message
+    ? messageText(payload.choices[0].message)
+    : "";
+  if (!content.trim()) {
     throw new Error("MiniMax returned an empty response.");
   }
 
