@@ -127,9 +127,9 @@ export function PencilIcon({ className }: IconProps) {
 export function GlobeIcon({ className }: IconProps) {
   return (
     <Icon className={className}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M3.5 12h17" />
-      <path d="M12 3.5c2.2 2.4 3.4 5.3 3.4 8.5S14.2 18.1 12 20.5c-2.2-2.4-3.4-5.3-3.4-8.5S9.8 5.9 12 3.5Z" />
+      <circle cx="12" cy="12" r="8" />
+      <path d="M4 12h16" />
+      <path d="M12 4c2.1 2.4 3.2 5.2 3.2 8S14.1 17.6 12 20c-2.1-2.4-3.2-5.2-3.2-8S9.9 6.4 12 4Z" />
     </Icon>
   );
 }

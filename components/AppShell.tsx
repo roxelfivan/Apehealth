@@ -110,12 +110,7 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
           >
             <PlusIcon className="h-7 w-7" />
           </Link>
-          <div className="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5">
-            <LanguageSwitch compact />
-            <span className="text-[11px] font-medium text-[var(--muted)]">
-              {t("common.language")}
-            </span>
-          </div>
+          <LanguageSwitch compact />
           <button type="button" className={navItem} onClick={onOpenSettings}>
             <GearIcon className="h-6 w-6" />
             {t("nav.settings")}
