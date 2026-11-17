@@ -3,23 +3,20 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { AppLogo } from "@/components/AppLogo";
+import { MealEditor } from "@/components/MealEditor";
+import { MealList } from "@/components/MealList";
 import { SettingsModal } from "@/components/SettingsModal";
-import { deleteMeal, hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
+import { hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
+import type { Meal } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export function HomeScreen() {
   const meals = useMeals();
   const settings = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [autoOpened, setAutoOpened] = useState(false);
+  const [editing, setEditing] = useState<Meal | null>(null);
   const isClient = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -56,13 +53,21 @@ export function HomeScreen() {
             <p className="mt-1 font-mono text-[10px] text-[var(--muted)]">v{APP_VERSION}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="rounded-full border border-[var(--line)] px-3 py-2 text-sm"
-        >
-          Settings
-        </button>
+        <div className="flex gap-2">
+          <Link
+            href="/history"
+            className="rounded-full border border-[var(--line)] px-3 py-2 text-sm"
+          >
+            History
+          </Link>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-full border border-[var(--line)] px-3 py-2 text-sm"
+          >
+            Settings
+          </button>
+        </div>
       </header>
 
       <section className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--card)] p-5 shadow-[0_18px_50px_rgba(40,24,8,0.08)]">
@@ -103,36 +108,7 @@ export function HomeScreen() {
           No meals yet. Snap one and Apehealth will estimate the calories.
         </div>
       ) : (
-        <ul className="space-y-3">
-          {todays.map((meal) => (
-            <li
-              key={meal.id}
-              className="flex gap-3 rounded-[1.4rem] border border-[var(--line)] bg-[var(--card)] p-3"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={meal.imageDataUrl}
-                alt=""
-                className="h-16 w-16 shrink-0 rounded-2xl object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{meal.description}</p>
-                <p className="text-sm text-[var(--muted)]">
-                  {meal.calories} kcal · {formatTime(meal.createdAt)}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="self-start text-xs text-[var(--muted)]"
-                onClick={() => {
-                  if (confirm("Delete this meal?")) deleteMeal(meal.id);
-                }}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+        <MealList meals={todays} onEdit={setEditing} />
       )}
 
       <Link
@@ -141,6 +117,10 @@ export function HomeScreen() {
       >
         Add Meal
       </Link>
+
+      {editing && (
+        <MealEditor key={editing.id} meal={editing} onClose={() => setEditing(null)} />
+      )}
 
       <SettingsModal
         open={settingsOpen}
