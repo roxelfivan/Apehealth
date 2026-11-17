@@ -1,3 +1,5 @@
+import type { Locale } from "./i18n/locales";
+
 export type Confidence = "high" | "medium" | "low";
 
 export type FoodItem = {
@@ -37,4 +39,5 @@ export type Settings = {
   apiEndpoint: string;
   model: string;
   ephemeralKey: boolean;
+  locale: Locale;
 };

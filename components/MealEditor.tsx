@@ -5,6 +5,7 @@ import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import {
   fromDatetimeLocalValue,
   hasApiKey,
@@ -22,6 +23,7 @@ type Props = {
 
 export function MealEditor({ meal, onClose }: Props) {
   const settings = useSettings();
+  const { t } = useTranslator();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -42,7 +44,7 @@ export function MealEditor({ meal, onClose }: Props) {
     setError(null);
     if (!hasApiKey(settings)) {
       setSettingsOpen(true);
-      setError("Add your MiniMax API key in Settings, then try again.");
+      setError(t("errors.needApiKey"));
       return;
     }
     try {
@@ -59,7 +61,7 @@ export function MealEditor({ meal, onClose }: Props) {
       setItems(estimate.items);
     } catch (caught) {
       setImage(meal.imageDataUrl);
-      setError(caught instanceof Error ? caught.message : "Could not analyze this photo.");
+      setError(caught instanceof Error ? caught.message : t("errors.couldNotAnalyze"));
     } finally {
       setAnalyzing(false);
     }
@@ -82,17 +84,17 @@ export function MealEditor({ meal, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
-      <button type="button" className="absolute inset-0" aria-label="Close editor" onClick={onClose} />
+      <button type="button" className="absolute inset-0" aria-label={t("editor.close")} onClick={onClose} />
       <div className="relative z-10 max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-[var(--line)] bg-[var(--card)] p-5 shadow-2xl sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
-              Edit meal
+              {t("editor.eyebrow")}
             </p>
-            <h2 className="font-[family-name:var(--font-display)] text-2xl">Record</h2>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl">{t("editor.title")}</h2>
           </div>
           <button type="button" onClick={onClose} className="btn-secondary min-h-11 px-4 text-sm">
-            Cancel
+            {t("editor.cancel")}
           </button>
         </div>
 
@@ -130,7 +132,7 @@ export function MealEditor({ meal, onClose }: Props) {
         {analyzing ? (
           <div className="mb-4 flex items-center gap-3 text-sm text-[var(--muted)]">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-            MiniMax is re-estimating calories and nutrition…
+            {t("editor.reEstimating")}
           </div>
         ) : (
           <div className="mb-4 flex gap-2">
@@ -139,21 +141,21 @@ export function MealEditor({ meal, onClose }: Props) {
               onClick={() => cameraRef.current?.click()}
               className="btn-secondary flex-1 text-sm"
             >
-              Retake photo
+              {t("editor.retakePhoto")}
             </button>
             <button
               type="button"
               onClick={() => galleryRef.current?.click()}
               className="btn-secondary flex-1 text-sm"
             >
-              Upload photo
+              {t("editor.uploadPhoto")}
             </button>
           </div>
         )}
 
         {confidence && (
           <p className="mb-3 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-            Result · confidence {confidence}
+            {t("editor.resultConfidence", { confidence: t(`confidence.${confidence}`) })}
           </p>
         )}
 
@@ -168,7 +170,7 @@ export function MealEditor({ meal, onClose }: Props) {
         </div>
 
         <label className="mb-3 block">
-          <span className="mb-1.5 block text-sm font-medium">Description</span>
+          <span className="mb-1.5 block text-sm font-medium">{t("editor.description")}</span>
           <textarea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -179,7 +181,7 @@ export function MealEditor({ meal, onClose }: Props) {
         </label>
 
         <label className="mb-3 block">
-          <span className="mb-1.5 block text-sm font-medium">Calories (kcal)</span>
+          <span className="mb-1.5 block text-sm font-medium">{t("editor.calories")}</span>
           <input
             type="number"
             min={0}
@@ -191,7 +193,7 @@ export function MealEditor({ meal, onClose }: Props) {
         </label>
 
         <label className="mb-5 block">
-          <span className="mb-1.5 block text-sm font-medium">Logged at</span>
+          <span className="mb-1.5 block text-sm font-medium">{t("editor.loggedAt")}</span>
           <input
             type="datetime-local"
             value={when}
@@ -207,7 +209,7 @@ export function MealEditor({ meal, onClose }: Props) {
           disabled={analyzing}
           className="btn-primary w-full disabled:opacity-60"
         >
-          Save changes
+          {t("editor.saveChanges")}
         </button>
       </div>
 

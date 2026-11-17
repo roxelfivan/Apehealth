@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import type { DailyTotal } from "@/lib/storage";
 
 type Props = {
@@ -8,20 +9,23 @@ type Props = {
 };
 
 export function CalorieChart({ series, goal }: Props) {
+  const { t } = useTranslator();
   const max = Math.max(goal, ...series.map((row) => row.calories), 1);
   const hasMeals = series.some((row) => row.mealCount > 0);
 
   if (!hasMeals) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-[var(--line)] px-5 py-10 text-center text-sm text-[var(--muted)]">
-        No meals in this range yet.
+        {t("history.chartEmpty")}
       </div>
     );
   }
 
   return (
     <div className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--card)] p-4">
-      <p className="mb-3 text-sm text-[var(--muted)]">Daily calories vs {goal} kcal goal</p>
+      <p className="mb-3 text-sm text-[var(--muted)]">
+        {t("history.dailyVsGoal", { goal })}
+      </p>
       <div className="-mx-1 overflow-x-auto pb-1">
         <div
           className="flex h-44 items-end gap-1.5 px-1"

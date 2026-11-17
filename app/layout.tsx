@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { DM_Sans, Fraunces, Noto_Sans_TC, Noto_Serif_TC } from "next/font/google";
+import { LocaleHtmlLang } from "@/components/LocaleHtmlLang";
 import { PwaRegister } from "@/components/PwaRegister";
 import "./globals.css";
 
@@ -11,6 +12,20 @@ const sans = DM_Sans({
 
 const display = Fraunces({
   variable: "--font-display-loaded",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+// Traditional Chinese fallbacks: the Latin fonts above have no CJK glyphs,
+// so a zh-Hant UI needs a font that covers Chinese characters.
+const cjkSans = Noto_Sans_TC({
+  variable: "--font-cjk-sans-loaded",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const cjkDisplay = Noto_Serif_TC({
+  variable: "--font-cjk-display-loaded",
   subsets: ["latin"],
   display: "swap",
 });
@@ -50,10 +65,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${display.variable} h-full antialiased`}
+      className={`${sans.variable} ${display.variable} ${cjkSans.variable} ${cjkDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <PwaRegister />
+        <LocaleHtmlLang />
         {children}
       </body>
     </html>

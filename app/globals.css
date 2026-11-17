@@ -27,6 +27,14 @@
   --font-display: var(--font-display-loaded);
 }
 
+/* The Latin display font has no CJK glyphs, so Traditional Chinese headings
+   fall back to a serif that does. Declared after the theme block so it wins
+   the cascade over the `--font-display` reference. */
+:root {
+  --font-display: var(--font-display-loaded), var(--font-cjk-display-loaded), "Noto Serif TC",
+    "PingFang TC", serif;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #14110c;
@@ -62,7 +70,15 @@ body {
     radial-gradient(1100px 520px at 8% -12%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
     var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans-loaded), ui-sans-serif, system-ui, sans-serif;
+  font-family:
+    var(--font-sans-loaded),
+    var(--font-cjk-sans-loaded),
+    ui-sans-serif,
+    system-ui,
+    "PingFang TC",
+    "Noto Sans TC",
+    "Microsoft JhengHei",
+    sans-serif;
   font-size: 1rem;
   line-height: 1.5;
   overscroll-behavior-y: contain;

@@ -1,4 +1,10 @@
 import { emitStoreChange } from "./events";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  matchLocale,
+  type Locale,
+} from "./i18n/locales";
 import { asNonNegativeNumber, parseFoodItems, roundCalories, roundGrams } from "./nutrition";
 import type { Meal, Settings } from "./types";
 
@@ -7,6 +13,7 @@ const GOAL_KEY = "apehealth.dailyGoal";
 const ENDPOINT_KEY = "apehealth.apiEndpoint";
 const MODEL_KEY = "apehealth.model";
 const EPHEMERAL_KEY = "apehealth.ephemeralKey";
+const LOCALE_KEY = "apehealth.locale";
 const API_KEY_LOCAL = "apehealth.apiKey";
 const API_KEY_SESSION = "apehealth.apiKey.session";
 
@@ -188,6 +195,21 @@ function readApiKey(ephemeral: boolean): string {
   return ephemeral ? fromSession : fromLocal || fromSession;
 }
 
+/** Persisted user choice wins; otherwise fall back to the browser language. */
+export function loadLocale(): Locale {
+  const stored = readJson<unknown>(LOCALE_KEY, null);
+  if (isLocale(stored)) return stored;
+  if (typeof navigator !== "undefined") {
+    const detected = matchLocale(navigator.languages ?? [navigator.language]);
+    if (detected) return detected;
+  }
+  return DEFAULT_LOCALE;
+}
+
+function saveLocale(locale: Locale): void {
+  localStorage.setItem(LOCALE_KEY, JSON.stringify(locale));
+}
+
 export function loadSettings(): Settings {
   const ephemeralKey = readJson<boolean>(EPHEMERAL_KEY, false);
   return {
@@ -196,6 +218,7 @@ export function loadSettings(): Settings {
     apiEndpoint: readJson<string>(ENDPOINT_KEY, DEFAULT_ENDPOINT) || DEFAULT_ENDPOINT,
     model: readJson<string>(MODEL_KEY, DEFAULT_MODEL) || DEFAULT_MODEL,
     ephemeralKey,
+    locale: loadLocale(),
   };
 }
 
@@ -204,6 +227,7 @@ export function saveSettings(settings: Settings): void {
   localStorage.setItem(ENDPOINT_KEY, JSON.stringify(settings.apiEndpoint.trim() || DEFAULT_ENDPOINT));
   localStorage.setItem(MODEL_KEY, JSON.stringify(settings.model.trim() || DEFAULT_MODEL));
   localStorage.setItem(EPHEMERAL_KEY, JSON.stringify(settings.ephemeralKey));
+  saveLocale(settings.locale);
 
   const key = settings.apiKey.trim();
   if (settings.ephemeralKey) {

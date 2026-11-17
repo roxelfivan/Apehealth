@@ -8,6 +8,7 @@ import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import { addMeal, hasApiKey, saveSettings } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
 import type { AnalyzeResult } from "@/lib/types";
@@ -17,6 +18,7 @@ type Step = "pick" | "analyzing" | "review";
 export function AddMeal() {
   const router = useRouter();
   const settings = useSettings();
+  const { t } = useTranslator();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -37,13 +39,13 @@ export function AddMeal() {
   async function onFile(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setError("Choose a photo of the meal.");
+      setError(t("errors.choosePhoto"));
       return;
     }
     setError(null);
     if (!hasApiKey(settings)) {
       setSettingsOpen(true);
-      setError("Add your MiniMax API key in Settings, then try again.");
+      setError(t("errors.needApiKey"));
       return;
     }
     try {
@@ -59,7 +61,7 @@ export function AddMeal() {
     } catch (caught) {
       setStep("pick");
       setImage(null);
-      setError(caught instanceof Error ? caught.message : "Could not analyze this photo.");
+      setError(caught instanceof Error ? caught.message : t("errors.couldNotAnalyze"));
     }
   }
 
@@ -67,13 +69,13 @@ export function AddMeal() {
     if (!image) return;
     const parsed = Number(calories);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      setCalorieError("Enter a calorie amount of 0 or more.");
+      setCalorieError(t("errors.calorieAmount"));
       return;
     }
     addMeal({
       id: crypto.randomUUID(),
       imageDataUrl: image,
-      description: description.trim() || "Meal",
+      description: description.trim() || t("common.meal"),
       calories: Math.round(parsed),
       protein: result?.protein ?? null,
       carbs: result?.carbs ?? null,
@@ -88,8 +90,8 @@ export function AddMeal() {
   return (
     <AppShell
       current="add"
-      title="Add meal"
-      subtitle="Photo estimate"
+      title={t("add.title")}
+      subtitle={t("add.subtitle")}
       onOpenSettings={() => setSettingsOpen(true)}
     >
       <input
@@ -121,11 +123,11 @@ export function AddMeal() {
           role="alert"
           className="mb-4 rounded-2xl bg-[var(--chip)] px-4 py-3 text-sm outline-none"
         >
-          <p className="font-medium">There is a problem</p>
+          <p className="font-medium">{t("errors.title")}</p>
           <p className="mt-1 text-[var(--muted)]">{error}</p>
           {!hasApiKey(settings) ? (
             <button type="button" className="btn-primary mt-3 min-h-10 px-4 text-sm" onClick={() => setSettingsOpen(true)}>
-              Open settings
+              {t("errors.openSettings")}
             </button>
           ) : null}
         </div>
@@ -133,16 +135,14 @@ export function AddMeal() {
 
       {step === "pick" && (
         <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4">
-          <p className="text-center text-[var(--muted)]">
-            Take a photo or upload one. MiniMax estimates calories and a food breakdown; you can edit before saving.
-          </p>
+          <p className="text-center text-[var(--muted)]">{t("add.pickBody")}</p>
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
             className="btn-primary h-14 w-full text-base"
           >
             <CameraIcon className="h-5 w-5" />
-            Take photo
+            {t("add.takePhoto")}
           </button>
           <button
             type="button"
@@ -150,7 +150,7 @@ export function AddMeal() {
             className="btn-secondary h-14 w-full text-base"
           >
             <ImageIcon className="h-5 w-5" />
-            Upload from gallery
+            {t("add.uploadFromGallery")}
           </button>
           <div
             className={`hidden rounded-[1.5rem] border-2 border-dashed px-5 py-10 text-center transition-colors duration-200 md:block ${
@@ -171,8 +171,8 @@ export function AddMeal() {
               void onFile(event.dataTransfer.files?.[0]);
             }}
           >
-            <p className="font-medium">Or drop a meal photo here</p>
-            <p className="mt-1 text-sm text-[var(--muted)]">Desktop shortcut — JPG, PNG, or HEIC.</p>
+            <p className="font-medium">{t("add.dropHere")}</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">{t("add.dropHint")}</p>
           </div>
         </div>
       )}
@@ -188,7 +188,7 @@ export function AddMeal() {
             <img src={image} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-          <p className="text-[var(--muted)]">MiniMax is estimating calories and nutrition…</p>
+          <p className="text-[var(--muted)]">{t("add.analyzing")}</p>
         </div>
       )}
 
@@ -215,12 +215,12 @@ export function AddMeal() {
           </div>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-[var(--muted)]">
-              Confidence:{" "}
-              <span className="font-medium capitalize text-[var(--foreground)]">{result.confidence}</span>
-              . Edit anything that looks off, then save.
+              {t("add.confidence", {
+                confidence: t(`confidence.${result.confidence}`),
+              })}
             </p>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">Description</span>
+              <span className="mb-1.5 block text-sm font-medium">{t("add.description")}</span>
               <textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
@@ -229,7 +229,7 @@ export function AddMeal() {
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">Calories (kcal)</span>
+              <span className="mb-1.5 block text-sm font-medium">{t("add.calories")}</span>
               <input
                 type="number"
                 min={0}
@@ -251,7 +251,7 @@ export function AddMeal() {
             </label>
             <div className="mt-auto flex flex-col gap-3 pt-2">
               <button type="submit" className="btn-primary h-14 w-full">
-                Save meal
+                {t("add.saveMeal")}
               </button>
               <button
                 type="button"
@@ -262,7 +262,7 @@ export function AddMeal() {
                   setResult(null);
                 }}
               >
-                Choose a different photo
+                {t("add.chooseDifferent")}
               </button>
             </div>
           </div>

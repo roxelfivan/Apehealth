@@ -7,25 +7,31 @@ import { MealEditor } from "@/components/MealEditor";
 import { MealList } from "@/components/MealList";
 import { PlusIcon } from "@/components/icons";
 import { SettingsModal } from "@/components/SettingsModal";
+import { formatDayLabel } from "@/lib/i18n/format";
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import { hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
 import { formatGrams, roundGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
 
-function formatDay(day: string): string {
-  if (!day) return "Today";
-  const date = new Date(`${day}T12:00:00`);
-  return date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-}
-
 function CalorieRing({
   eaten,
   goal,
   remaining,
+  overLabel,
+  remainingLabel,
+  eatenOfLabel,
+  goalLabel,
+  progressLabel,
 }: {
   eaten: number;
   goal: number;
   remaining: number;
+  overLabel: string;
+  remainingLabel: string;
+  eatenOfLabel: string;
+  goalLabel: string;
+  progressLabel: string;
 }) {
   const progressId = useId();
   const radius = 54;
@@ -60,18 +66,18 @@ function CalorieRing({
       </div>
       <div className="min-w-0 flex-1 text-center sm:text-left">
         <p id={progressId} className="text-sm text-[var(--muted)]">
-          Calories eaten of {goal}
+          {eatenOfLabel}
         </p>
         <p className={`mt-1 text-lg font-semibold ${over ? "text-[var(--over)]" : "text-[var(--ok)]"}`}>
-          {over ? `${Math.abs(remaining)} over goal` : `${remaining} remaining`}
+          {over ? overLabel : remainingLabel}
         </p>
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-2xl bg-[var(--chip)] px-3 py-2">
-            <dt className="text-[var(--muted)]">Goal</dt>
+            <dt className="text-[var(--muted)]">{goalLabel}</dt>
             <dd className="font-medium tabular-nums">{goal} kcal</dd>
           </div>
           <div className="rounded-2xl bg-[var(--chip)] px-3 py-2">
-            <dt className="text-[var(--muted)]">Progress</dt>
+            <dt className="text-[var(--muted)]">{progressLabel}</dt>
             <dd className="font-medium tabular-nums">{Math.round(ratio * 100)}%</dd>
           </div>
         </dl>
@@ -83,6 +89,7 @@ function CalorieRing({
 export function HomeScreen() {
   const meals = useMeals();
   const settings = useSettings();
+  const { locale, t } = useTranslator();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState<Meal | null>(null);
   const isClient = useSyncExternalStore(
@@ -109,20 +116,35 @@ export function HomeScreen() {
   return (
     <AppShell
       current="home"
-      title="Apehealth"
-      subtitle={isClient ? formatDay(day) : "Today"}
+      title={t("home.title")}
+      subtitle={isClient ? formatDayLabel(locale, day) : t("common.today")}
       onOpenSettings={() => setSettingsOpen(true)}
     >
       <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(18rem,22rem)_1fr] lg:items-start lg:gap-8">
         <section className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--card)] p-5 shadow-[0_18px_50px_rgba(40,24,8,0.08)] lg:sticky lg:top-6">
-          <CalorieRing eaten={eaten} goal={settings.dailyGoal} remaining={remaining} />
+          <CalorieRing
+            eaten={eaten}
+            goal={settings.dailyGoal}
+            remaining={remaining}
+            eatenOfLabel={t("home.caloriesEatenOf", { goal: settings.dailyGoal })}
+            overLabel={t("home.overGoal", { amount: Math.abs(remaining) })}
+            remainingLabel={t("home.remaining", { amount: remaining })}
+            goalLabel={t("home.goal")}
+            progressLabel={t("home.progress")}
+          />
           {hasMacros ? (
             <p className="mt-4 text-center text-sm sm:text-left">
-              <span style={{ color: "var(--protein)" }}>{formatGrams(protein)} protein</span>
+              <span style={{ color: "var(--protein)" }}>
+                {formatGrams(protein)} {t("home.protein")}
+              </span>
               {" · "}
-              <span style={{ color: "var(--carb)" }}>{formatGrams(carbs)} carb</span>
+              <span style={{ color: "var(--carb)" }}>
+                {formatGrams(carbs)} {t("home.carb")}
+              </span>
               {" · "}
-              <span style={{ color: "var(--fat)" }}>{formatGrams(fat)} fat</span>
+              <span style={{ color: "var(--fat)" }}>
+                {formatGrams(fat)} {t("home.fat")}
+              </span>
             </p>
           ) : null}
         </section>
@@ -134,30 +156,33 @@ export function HomeScreen() {
               onClick={() => setSettingsOpen(true)}
               className="mb-4 w-full rounded-2xl border border-[var(--line)] bg-[var(--chip)] px-4 py-3 text-left text-sm transition-colors duration-200 hover:bg-[var(--card)]"
             >
-              <span className="block font-medium">Add a MiniMax API key</span>
-              <span className="mt-0.5 block text-[var(--muted)]">
-                Needed to estimate calories from photos. Tap to open Settings.
-              </span>
+              <span className="block font-medium">{t("home.apiKeyTitle")}</span>
+              <span className="mt-0.5 block text-[var(--muted)]">{t("home.apiKeyBody")}</span>
             </button>
           ) : null}
 
           <div className="mb-3 flex items-end justify-between gap-3">
             <h2 className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
-              Today&apos;s meals
+              {t("home.todaysMeals")}
             </h2>
             <p className="text-sm text-[var(--muted)]">
-              {todays.length} {todays.length === 1 ? "meal" : "meals"}
+              {todays.length === 1
+                ? t("home.mealCountOne", { count: todays.length })
+                : t("home.mealCountMany", { count: todays.length })}
             </p>
           </div>
 
           {todays.length === 0 ? (
             <div className="flex flex-col items-center rounded-[1.5rem] border border-dashed border-[var(--line)] bg-[var(--card)] px-5 py-12 text-center">
               <p className="max-w-sm text-[var(--muted)]">
-                No meals yet. Snap or upload a photo and Apehealth will estimate the calories.
+                <span className="font-medium text-[var(--foreground)]">
+                  {t("home.emptyTitle")}
+                </span>{" "}
+                {t("home.emptyBody")}
               </p>
               <Link href="/add" className="btn-primary mt-5">
                 <PlusIcon className="h-5 w-5" />
-                Add first meal
+                {t("home.addFirstMeal")}
               </Link>
             </div>
           ) : (

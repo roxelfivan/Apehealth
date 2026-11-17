@@ -6,10 +6,23 @@ import {
   sumItemCalories,
   sumItemGrams,
 } from "./nutrition";
+import { translate, type Locale } from "./i18n/translate";
 import type { AnalyzeResult, Confidence, Settings } from "./types";
 
-const USER_PROMPT =
+/**
+ * Prompt sent to MiniMax. The response language is driven by the user's
+ * locale so a Traditional Chinese user gets a Traditional Chinese analysis
+ * (description and food item names included).
+ */
+const USER_PROMPT_EN =
   "Estimate calories and nutrition for this meal photo. Return ONLY a JSON object with: description (string), calories (number, total kcal), protein (grams), carbs (grams), fat (grams), confidence (high/medium/low), and items (array of {name, calories, carbs, protein, fat}). Split visible foods into separate items, including oils, dressings, and sauces. Be realistic about portion sizes. Totals should match the sum of items.";
+
+const USER_PROMPT_ZH_HANT =
+  "估算這張餐點照片的熱量與營養成分。只回傳一個 JSON 物件，包含：description (字串，使用繁體中文)、calories (數字，總大卡數)、protein (公克)、carbs (公克)、fat (公克)、confidence (high/medium/low)、items (陣列，每個元素為 {name, calories, carbs, protein, fat})。description 與 items 中的 name 必須使用繁體中文撰寫。請將看得見的食物拆成個別項目，包含油脂、醬料與淋醬。份量請符合實際情況。總量應等於所有項目的加總。";
+
+function userPrompt(locale: Locale): string {
+  return locale === "zh-Hant" ? USER_PROMPT_ZH_HANT : USER_PROMPT_EN;
+}
 
 function completionsUrl(endpoint: string): string {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
@@ -17,13 +30,13 @@ function completionsUrl(endpoint: string): string {
   return `${trimmed}/chat/completions`;
 }
 
-function assertSafeEndpoint(endpoint: string): string {
+function assertSafeEndpoint(endpoint: string, locale: Locale): string {
   const url = completionsUrl(endpoint);
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    throw new Error("API endpoint is not a valid URL.");
+    throw new Error(translate(locale, "errors.invalidEndpoint"));
   }
   const host = parsed.hostname.toLowerCase();
   const isLocal =
@@ -32,7 +45,7 @@ function assertSafeEndpoint(endpoint: string): string {
     host === "[::1]" ||
     host === "::1";
   if (parsed.protocol !== "https:" && !(isLocal && parsed.protocol === "http:")) {
-    throw new Error("API endpoint must be HTTPS (or localhost).");
+    throw new Error(translate(locale, "errors.insecureEndpoint"));
   }
   return parsed.toString();
 }
@@ -41,14 +54,14 @@ function stripThink(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
 
-function extractJson(text: string): unknown {
+function extractJson(text: string, locale: Locale): unknown {
   const cleaned = stripThink(text);
   const fenced = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = (fenced?.[1] ?? cleaned).trim();
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start === -1 || end === -1) {
-    throw new Error("MiniMax did not return JSON.");
+    throw new Error(translate(locale, "errors.noJson"));
   }
   return JSON.parse(raw.slice(start, end + 1));
 }
@@ -88,15 +101,16 @@ export async function analyzeMealPhoto(
   imageDataUrl: string,
   settings: Settings,
 ): Promise<AnalyzeResult> {
+  const locale = settings.locale;
   const apiKey = settings.apiKey.trim();
   if (!apiKey) {
-    throw new Error("Add your MiniMax API key in Settings first.");
+    throw new Error(translate(locale, "errors.missingApiKey"));
   }
   if (!imageDataUrl.startsWith("data:image/")) {
-    throw new Error("Could not read this photo.");
+    throw new Error(translate(locale, "errors.couldNotReadPhoto"));
   }
 
-  const url = assertSafeEndpoint(settings.apiEndpoint);
+  const url = assertSafeEndpoint(settings.apiEndpoint, locale);
   const model = settings.model.trim() || "MiniMax-M3";
   const usesFlash = /m3\.1/i.test(model);
 
@@ -109,7 +123,7 @@ export async function analyzeMealPhoto(
       {
         role: "user",
         content: [
-          { type: "text", text: USER_PROMPT },
+          { type: "text", text: userPrompt(locale) },
           {
             type: "image_url",
             image_url: {
@@ -153,7 +167,7 @@ export async function analyzeMealPhoto(
     const message =
       payload?.error?.message ||
       payload?.base_resp?.status_msg ||
-      `MiniMax request failed (${response.status}).`;
+      translate(locale, "errors.requestFailed", { status: response.status });
     throw new Error(message);
   }
 
@@ -161,10 +175,10 @@ export async function analyzeMealPhoto(
     ? messageText(payload.choices[0].message)
     : "";
   if (!content.trim()) {
-    throw new Error("MiniMax returned an empty response.");
+    throw new Error(translate(locale, "errors.emptyResponse"));
   }
 
-  const parsed = extractJson(content) as {
+  const parsed = extractJson(content, locale) as {
     description?: unknown;
     calories?: unknown;
     protein?: unknown;
@@ -180,7 +194,7 @@ export async function analyzeMealPhoto(
     asNonNegativeNumber(parsed.calories) ??
     (items.length ? sumItemCalories(items) : null);
   if (calories == null) {
-    throw new Error("Could not read a calorie number from MiniMax.");
+    throw new Error(translate(locale, "errors.noCalories"));
   }
 
   const protein =
@@ -197,7 +211,7 @@ export async function analyzeMealPhoto(
     description:
       typeof parsed.description === "string" && parsed.description.trim()
         ? parsed.description.trim()
-        : "Meal",
+        : translate(locale, "common.meal"),
     calories: roundCalories(calories),
     protein: protein == null ? null : roundGrams(protein),
     carbs: carbs == null ? null : roundGrams(carbs),

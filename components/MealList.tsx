@@ -2,26 +2,11 @@
 
 import { useState } from "react";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import { formatTimeLabel } from "@/lib/i18n/format";
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import { deleteMeal } from "@/lib/storage";
 import { formatGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
-
-export function formatMealTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-export function formatMealDay(day: string): string {
-  const parsed = new Date(`${day}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return day;
-  return parsed.toLocaleDateString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 type Props = {
   meals: Meal[];
@@ -30,6 +15,7 @@ type Props = {
 };
 
 export function MealList({ meals, onEdit, className }: Props) {
+  const { locale, t } = useTranslator();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   if (meals.length === 0) return null;
 
@@ -53,7 +39,7 @@ export function MealList({ meals, onEdit, className }: Props) {
             <div className="min-w-0 flex-1">
               <p className="font-medium leading-snug [overflow-wrap:anywhere]">{meal.description}</p>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                {meal.calories} kcal · {formatMealTime(meal.createdAt)}
+                {meal.calories} kcal · {formatTimeLabel(locale, meal.createdAt)}
               </p>
               {meal.protein != null || meal.carbs != null || meal.fat != null ? (
                 <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
@@ -72,14 +58,14 @@ export function MealList({ meals, onEdit, className }: Props) {
                       setPendingDelete(null);
                     }}
                   >
-                    Delete
+                    {t("list.delete")}
                   </button>
                   <button
                     type="button"
                     className="btn-secondary min-h-10 px-3 text-sm"
                     onClick={() => setPendingDelete(null)}
                   >
-                    Keep
+                    {t("list.keep")}
                   </button>
                 </div>
               ) : null}
@@ -89,7 +75,7 @@ export function MealList({ meals, onEdit, className }: Props) {
                 <button
                   type="button"
                   className="btn-icon h-12 w-12"
-                  aria-label={`Edit ${meal.description}`}
+                  aria-label={t("list.editItem", { name: meal.description })}
                   onClick={() => onEdit(meal)}
                 >
                   <PencilIcon className="h-5 w-5" />
@@ -97,7 +83,7 @@ export function MealList({ meals, onEdit, className }: Props) {
                 <button
                   type="button"
                   className="btn-icon h-12 w-12"
-                  aria-label={`Delete ${meal.description}`}
+                  aria-label={t("list.deleteItem", { name: meal.description })}
                   onClick={() => setPendingDelete(meal.id)}
                 >
                   <TrashIcon className="h-5 w-5" />

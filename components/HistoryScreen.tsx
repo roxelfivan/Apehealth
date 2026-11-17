@@ -4,8 +4,10 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CalorieChart } from "@/components/CalorieChart";
 import { MealEditor } from "@/components/MealEditor";
-import { MealList, formatMealDay } from "@/components/MealList";
+import { MealList } from "@/components/MealList";
 import { SettingsModal } from "@/components/SettingsModal";
+import { formatDayLabel } from "@/lib/i18n/format";
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import { dailyTotals, mealsByDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
 import type { Meal } from "@/lib/types";
@@ -15,6 +17,7 @@ const RANGES = [7, 14, 30] as const;
 export function HistoryScreen() {
   const meals = useMeals();
   const settings = useSettings();
+  const { locale, t } = useTranslator();
   const [range, setRange] = useState<(typeof RANGES)[number]>(7);
   const [editing, setEditing] = useState<Meal | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -35,8 +38,8 @@ export function HistoryScreen() {
   return (
     <AppShell
       current="history"
-      title="History"
-      subtitle="Daily totals"
+      title={t("history.title")}
+      subtitle={t("history.subtitle")}
       onOpenSettings={() => setSettingsOpen(true)}
     >
       <div className="mb-4 flex rounded-full border border-[var(--line)] bg-[var(--card)] p-1">
@@ -50,7 +53,7 @@ export function HistoryScreen() {
               range === days ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]" : "text-[var(--muted)]"
             }`}
           >
-            {days} days
+            {t("history.rangeDays", { days })}
           </button>
         ))}
       </div>
@@ -58,19 +61,19 @@ export function HistoryScreen() {
       <CalorieChart series={series} goal={settings.dailyGoal} />
 
       <h2 className="mb-3 mt-8 text-sm font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
-        Meals
+        {t("history.mealsHeading")}
       </h2>
 
       {inRange.length === 0 ? (
         <div className="rounded-[1.5rem] border border-dashed border-[var(--line)] px-5 py-10 text-center text-[var(--muted)]">
-          Nothing logged in the last {range} days.
+          {t("history.empty", { days: range })}
         </div>
       ) : (
         <div className="space-y-6">
           {inRange.map((group) => (
             <section key={group.day}>
               <div className="mb-2 flex items-baseline justify-between">
-                <h3 className="text-sm font-medium">{formatMealDay(group.day)}</h3>
+                <h3 className="text-sm font-medium">{formatDayLabel(locale, group.day)}</h3>
                 <p className="text-xs text-[var(--muted)]">
                   {group.meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
                 </p>

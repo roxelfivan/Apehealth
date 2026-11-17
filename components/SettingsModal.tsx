@@ -3,9 +3,17 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronIcon, CloseIcon, EyeIcon, EyeOffIcon } from "@/components/icons";
 import {
+  LOCALE_NAMES,
+  LOCALES,
+  localeTag,
+  type Locale,
+} from "@/lib/i18n";
+import { useTranslator } from "@/lib/i18n/useTranslator";
+import {
   DEFAULT_ENDPOINT,
   DEFAULT_MODEL,
   MODEL_PRESETS,
+  saveSettings,
 } from "@/lib/storage";
 import type { Settings } from "@/lib/types";
 
@@ -20,6 +28,8 @@ export function SettingsModal({ open, initial, onClose, onSave }: Props) {
   if (!open) return null;
   return (
     <SettingsForm
+      // The locale is excluded from the key so switching the language does not
+      // remount the form and discard the rest of the user's draft.
       key={`${initial.dailyGoal}|${initial.apiEndpoint}|${initial.model}|${initial.ephemeralKey}|${initial.apiKey.length}`}
       initial={initial}
       onClose={onClose}
@@ -34,6 +44,7 @@ function SettingsForm({
   onSave,
 }: Omit<Props, "open">) {
   const titleId = useId();
+  const { t, tn } = useTranslator();
   const formRef = useRef<HTMLFormElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -85,7 +96,7 @@ function SettingsForm({
       <button
         type="button"
         className="absolute inset-0 cursor-pointer"
-        aria-label="Close settings"
+        aria-label={t("settings.close")}
         onClick={onClose}
       />
       <form
@@ -98,7 +109,7 @@ function SettingsForm({
           event.preventDefault();
           const goal = Math.round(Number(draft.dailyGoal) || 0);
           if (goal < 500 || goal > 8000) {
-            setGoalError("Enter a daily goal between 500 and 8000 kcal.");
+            setGoalError(t("errors.goalRange"));
             return;
           }
           onSave({
@@ -113,10 +124,10 @@ function SettingsForm({
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
-              Settings
+              {t("settings.eyebrow")}
             </p>
             <h2 id={titleId} className="font-[family-name:var(--font-display)] text-2xl">
-              Apehealth
+              {t("settings.title")}
             </h2>
           </div>
           <button
@@ -124,14 +135,49 @@ function SettingsForm({
             type="button"
             onClick={onClose}
             className="btn-icon"
-            aria-label="Close settings"
+            aria-label={t("settings.close")}
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
+        <fieldset className="mb-4">
+          <legend className="mb-1.5 block text-sm font-medium">{t("settings.language")}</legend>
+          <div
+            role="radiogroup"
+            aria-label={t("settings.language")}
+            className="flex gap-2 rounded-2xl bg-[var(--chip)] p-1"
+          >
+            {LOCALES.map((option: Locale) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={draft.locale === option}
+                lang={localeTag(option)}
+                className={`min-h-11 flex-1 rounded-xl text-sm transition-colors duration-200 ${
+                  draft.locale === option
+                    ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+                onClick={() => {
+                  setDraft((prev) => ({ ...prev, locale: option }));
+                  // Apply immediately so the whole interface (and any pending
+                  // AI analysis) follows the newly chosen language. Only the
+                  // locale is persisted here — the rest of the form stays a
+                  // draft until Save is pressed.
+                  saveSettings({ ...initial, locale: option });
+                }}
+              >
+                {LOCALE_NAMES[option]}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--muted)]">{t("settings.languageHint")}</p>
+        </fieldset>
+
         <label className="mb-4 block">
-          <span className="mb-1.5 block text-sm font-medium">Daily calorie goal</span>
+          <span className="mb-1.5 block text-sm font-medium">{t("settings.dailyGoal")}</span>
           <input
             type="number"
             min={500}
@@ -147,7 +193,7 @@ function SettingsForm({
             className="field"
           />
           <p id="goal-hint" className="mt-1.5 text-xs text-[var(--muted)]">
-            Used on Today to show remaining calories.
+            {t("settings.goalHint")}
           </p>
           {goalError ? (
             <p id="goal-error" className="mt-1.5 text-sm text-[var(--over)]">
@@ -157,13 +203,13 @@ function SettingsForm({
         </label>
 
         <label className="mb-2 block">
-          <span className="mb-1.5 block text-sm font-medium">MiniMax API key</span>
+          <span className="mb-1.5 block text-sm font-medium">{t("settings.apiKey")}</span>
           <div className="flex gap-2">
             <input
               type={showKey ? "text" : "password"}
               autoComplete="off"
               spellCheck={false}
-              placeholder="Paste your MiniMax API key…"
+              placeholder={t("settings.apiKeyPlaceholder")}
               value={draft.apiKey}
               onChange={(event) =>
                 setDraft((prev) => ({ ...prev, apiKey: event.target.value }))
@@ -175,23 +221,25 @@ function SettingsForm({
               onClick={() => setShowKey((value) => !value)}
               className="btn-icon shrink-0"
               aria-pressed={showKey}
-              aria-label={showKey ? "Hide API key" : "Show API key"}
+              aria-label={showKey ? t("settings.hideKey") : t("settings.showKey")}
             >
               {showKey ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
             </button>
           </div>
         </label>
         <p className="mb-3 text-xs leading-5 text-[var(--muted)]">
-          Stored only in this browser. The key is sent as a Bearer token to MiniMax — not to an Apehealth server. Get a key at{" "}
-          <a
-            className="underline decoration-[var(--accent)] underline-offset-2"
-            href="https://platform.minimax.io/user-center/basic-information/interface-key"
-            target="_blank"
-            rel="noreferrer"
-          >
-            platform.minimax.io
-          </a>
-          .
+          {tn("settings.apiKeyNote", {
+            link: (
+              <a
+                className="underline decoration-[var(--accent)] underline-offset-2"
+                href="https://platform.minimax.io/user-center/basic-information/interface-key"
+                target="_blank"
+                rel="noreferrer"
+              >
+                platform.minimax.io
+              </a>
+            ),
+          })}
         </p>
 
         <label className="mb-4 flex min-h-12 items-start gap-3 rounded-2xl bg-[var(--chip)] px-3 py-3 text-sm">
@@ -204,9 +252,9 @@ function SettingsForm({
             }
           />
           <span>
-            Forget API key when this tab closes
+            {t("settings.ephemeralKey")}
             <span className="mt-0.5 block text-xs text-[var(--muted)]">
-              Keeps the key in session storage instead of local storage.
+              {t("settings.ephemeralKeyHint")}
             </span>
           </span>
         </label>
@@ -217,14 +265,14 @@ function SettingsForm({
           aria-expanded={advanced}
           onClick={() => setAdvanced((value) => !value)}
         >
-          Advanced API options
+          {t("settings.advanced")}
           <ChevronIcon className={`h-5 w-5 transition-transform duration-200 ${advanced ? "rotate-180" : ""}`} />
         </button>
 
         {advanced ? (
           <div className="mb-4 space-y-4">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">API endpoint</span>
+              <span className="mb-1.5 block text-sm font-medium">{t("settings.apiEndpoint")}</span>
               <input
                 type="url"
                 value={draft.apiEndpoint}
@@ -235,7 +283,7 @@ function SettingsForm({
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">Model</span>
+              <span className="mb-1.5 block text-sm font-medium">{t("settings.model")}</span>
               <input
                 list="apehealth-models"
                 value={draft.model}
@@ -255,10 +303,10 @@ function SettingsForm({
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" className="btn-secondary w-full sm:w-auto" onClick={onClose}>
-            Cancel
+            {t("settings.cancel")}
           </button>
           <button type="submit" className="btn-primary w-full sm:w-auto sm:min-w-32">
-            Save
+            {t("settings.save")}
           </button>
         </div>
       </form>

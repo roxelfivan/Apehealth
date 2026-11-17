@@ -9,6 +9,7 @@ import {
   loadMeals,
   loadSettings,
 } from "./storage";
+import { DEFAULT_LOCALE } from "./i18n/locales";
 import type { Meal, Settings } from "./types";
 
 let mealsSnap = "[]";
@@ -32,6 +33,7 @@ const SERVER_SETTINGS: Settings = {
   apiEndpoint: DEFAULT_ENDPOINT,
   model: DEFAULT_MODEL,
   ephemeralKey: false,
+  locale: DEFAULT_LOCALE,
 };
 
 export function useMeals(): Meal[] {

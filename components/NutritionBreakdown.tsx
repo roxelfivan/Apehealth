@@ -1,3 +1,4 @@
+import { useTranslator } from "@/lib/i18n/useTranslator";
 import { formatGrams, formatKcal } from "@/lib/nutrition";
 import type { FoodItem } from "@/lib/types";
 
@@ -76,6 +77,7 @@ function MacroCell({
 }
 
 export function NutritionBreakdown({ calories, protein, carbs, fat, items }: Props) {
+  const { t } = useTranslator();
   const hasMacros = protein != null || carbs != null || fat != null;
   if (!hasMacros && items.length === 0) return null;
 
@@ -85,25 +87,25 @@ export function NutritionBreakdown({ calories, protein, carbs, fat, items }: Pro
         <div className="grid grid-cols-4 gap-2 rounded-[1.4rem] border border-[var(--line)] bg-[var(--card)] px-2 py-4">
           <MacroCell
             kind="calories"
-            label="Calories"
+            label={t("nutrition.calories")}
             value={formatKcal(calories)}
             color="var(--foreground)"
           />
           <MacroCell
             kind="protein"
-            label="Protein"
+            label={t("nutrition.protein")}
             value={protein == null ? "—" : formatGrams(protein)}
             color="var(--protein)"
           />
           <MacroCell
             kind="carbs"
-            label="Carb"
+            label={t("nutrition.carb")}
             value={carbs == null ? "—" : formatGrams(carbs)}
             color="var(--carb)"
           />
           <MacroCell
             kind="fat"
-            label="Fat"
+            label={t("nutrition.fat")}
             value={fat == null ? "—" : formatGrams(fat)}
             color="var(--fat)"
           />
@@ -115,9 +117,9 @@ export function NutritionBreakdown({ calories, protein, carbs, fat, items }: Pro
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="text-left text-[13px] font-semibold">
-                <th className="px-4 py-3">Food Item</th>
-                <th className="px-2 py-3 text-right">Calories</th>
-                <th className="px-4 py-3 text-right">Carbs</th>
+                <th className="px-4 py-3">{t("nutrition.foodItem")}</th>
+                <th className="px-2 py-3 text-right">{t("nutrition.calories")}</th>
+                <th className="px-4 py-3 text-right">{t("nutrition.carbsColumn")}</th>
               </tr>
             </thead>
             <tbody>
