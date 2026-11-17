@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { fileToCompressedDataUrl } from "@/lib/image";
+import { fileToApiDataUrl } from "@/lib/image";
 import { analyzeMealPhoto } from "@/lib/minimax";
 import { addMeal, hasApiKey, saveSettings } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
@@ -34,7 +34,7 @@ export function AddMeal() {
       return;
     }
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
+      const dataUrl = await fileToApiDataUrl(file);
       setImage(dataUrl);
       setStep("analyzing");
       const estimate = await analyzeMealPhoto(dataUrl, settings);
