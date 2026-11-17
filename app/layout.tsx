@@ -6,11 +6,13 @@ import "./globals.css";
 const sans = DM_Sans({
   variable: "--font-sans-loaded",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const display = Fraunces({
   variable: "--font-display-loaded",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -41,7 +43,6 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
 };
 

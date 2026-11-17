@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { AppShell } from "@/components/AppShell";
 import { CalorieChart } from "@/components/CalorieChart";
 import { MealEditor } from "@/components/MealEditor";
 import { MealList, formatMealDay } from "@/components/MealList";
-import { dailyTotals, mealsByDay, todayKey } from "@/lib/storage";
+import { SettingsModal } from "@/components/SettingsModal";
+import { dailyTotals, mealsByDay, saveSettings, todayKey } from "@/lib/storage";
 import { useMeals, useSettings } from "@/lib/store";
 import type { Meal } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export function HistoryScreen() {
   const settings = useSettings();
   const [range, setRange] = useState<(typeof RANGES)[number]>(7);
   const [editing, setEditing] = useState<Meal | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const today = useSyncExternalStore(
     () => () => {},
     () => todayKey(new Date()),
@@ -31,26 +33,24 @@ export function HistoryScreen() {
   }, [meals, series]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <header className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-[var(--muted)]">
-          ← Home
-        </Link>
-        <h1 className="font-[family-name:var(--font-display)] text-xl">History</h1>
-        <span className="w-12" />
-      </header>
-
+    <AppShell
+      current="history"
+      title="History"
+      subtitle="Daily totals"
+      onOpenSettings={() => setSettingsOpen(true)}
+    >
       <div className="mb-4 flex rounded-full border border-[var(--line)] bg-[var(--card)] p-1">
         {RANGES.map((days) => (
           <button
             key={days}
             type="button"
             onClick={() => setRange(days)}
-            className={`flex-1 rounded-full py-2 text-sm ${
+            aria-pressed={range === days}
+            className={`min-h-11 flex-1 rounded-full text-sm transition-colors duration-200 ${
               range === days ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]" : "text-[var(--muted)]"
             }`}
           >
-            {days}d
+            {days} days
           </button>
         ))}
       </div>
@@ -84,6 +84,16 @@ export function HistoryScreen() {
       {editing && (
         <MealEditor key={editing.id} meal={editing} onClose={() => setEditing(null)} />
       )}
-    </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        initial={settings}
+        onClose={() => setSettingsOpen(false)}
+        onSave={(next) => {
+          saveSettings(next);
+          setSettingsOpen(false);
+        }}
+      />
+    </AppShell>
   );
 }
