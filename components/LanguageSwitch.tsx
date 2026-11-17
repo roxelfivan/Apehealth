@@ -13,7 +13,7 @@ import { saveSettings } from "@/lib/storage";
 import { useSettings } from "@/lib/store";
 
 type Props = {
-  /** Render as a compact icon-only button (used in the bottom nav). */
+  /** Stacked icon + label, matching the other bottom-nav items. */
   compact?: boolean;
   className?: string;
 };
@@ -66,13 +66,18 @@ export function LanguageSwitch({ compact = false, className }: Props) {
   const label = LOCALE_NAMES[locale];
 
   return (
-    <div ref={containerRef} className={`relative ${className ?? ""}`}>
+    <div
+      ref={containerRef}
+      className={`relative ${compact ? "min-w-0 flex-1" : ""} ${className ?? ""}`}
+    >
       <button
         ref={buttonRef}
         type="button"
         className={
           compact
-            ? "btn-icon h-12 w-12"
+            ? `flex min-h-12 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[11px] font-medium transition-colors duration-200 hover:bg-[var(--chip)] hover:text-[var(--foreground)] ${
+                open ? "bg-[var(--chip)] text-[var(--foreground)]" : "text-[var(--muted)]"
+              }`
             : "btn-secondary h-11 px-3 text-sm"
         }
         aria-haspopup="menu"
@@ -81,8 +86,8 @@ export function LanguageSwitch({ compact = false, className }: Props) {
         lang={localeTag(locale)}
         onClick={() => setOpen((value) => !value)}
       >
-        <GlobeIcon className="h-5 w-5" />
-        {compact ? null : <span>{label}</span>}
+        <GlobeIcon className={compact ? "h-6 w-6" : "h-5 w-5"} />
+        {compact ? t("common.language") : <span>{label}</span>}
       </button>
 
       {open ? (
