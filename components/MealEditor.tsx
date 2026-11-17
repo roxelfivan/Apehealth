@@ -78,11 +78,7 @@ export function MealEditor({ meal, onClose }: Props) {
             </p>
             <h2 className="font-[family-name:var(--font-display)] text-2xl">Record</h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-3 py-1 text-sm text-[var(--muted)] hover:bg-[var(--chip)]"
-          >
+          <button type="button" onClick={onClose} className="btn-secondary min-h-11 px-4 text-sm">
             Cancel
           </button>
         </div>
@@ -109,9 +105,11 @@ export function MealEditor({ meal, onClose }: Props) {
           }}
         />
 
-        {error && (
-          <p className="mb-4 rounded-2xl bg-[var(--chip)] px-4 py-3 text-sm">{error}</p>
-        )}
+        {error ? (
+          <p role="alert" className="mb-4 rounded-2xl bg-[var(--chip)] px-4 py-3 text-sm">
+            {error}
+          </p>
+        ) : null}
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt="" className="mb-3 max-h-48 w-full rounded-[1.5rem] object-cover" />
@@ -126,14 +124,14 @@ export function MealEditor({ meal, onClose }: Props) {
             <button
               type="button"
               onClick={() => cameraRef.current?.click()}
-              className="flex-1 rounded-full border border-[var(--line)] py-2.5 text-sm"
+              className="btn-secondary flex-1 text-sm"
             >
               Retake photo
             </button>
             <button
               type="button"
               onClick={() => galleryRef.current?.click()}
-              className="flex-1 rounded-full border border-[var(--line)] py-2.5 text-sm"
+              className="btn-secondary flex-1 text-sm"
             >
               Upload photo
             </button>
@@ -153,7 +151,7 @@ export function MealEditor({ meal, onClose }: Props) {
             onChange={(event) => setDescription(event.target.value)}
             rows={3}
             disabled={analyzing}
-            className="w-full rounded-2xl border border-[var(--line)] bg-[var(--field)] px-4 py-3 outline-none focus:border-[var(--accent)] disabled:opacity-60"
+            className="field min-h-24 disabled:opacity-60"
           />
         </label>
 
@@ -165,7 +163,7 @@ export function MealEditor({ meal, onClose }: Props) {
             value={calories}
             onChange={(event) => setCalories(event.target.value)}
             disabled={analyzing}
-            className="w-full rounded-2xl border border-[var(--line)] bg-[var(--field)] px-4 py-3 text-2xl outline-none focus:border-[var(--accent)] disabled:opacity-60"
+            className="field text-2xl disabled:opacity-60"
           />
         </label>
 
@@ -176,7 +174,7 @@ export function MealEditor({ meal, onClose }: Props) {
             value={when}
             onChange={(event) => setWhen(event.target.value)}
             disabled={analyzing}
-            className="w-full rounded-2xl border border-[var(--line)] bg-[var(--field)] px-4 py-3 outline-none focus:border-[var(--accent)] disabled:opacity-60"
+            className="field disabled:opacity-60"
           />
         </label>
 
@@ -184,7 +182,7 @@ export function MealEditor({ meal, onClose }: Props) {
           type="button"
           onClick={save}
           disabled={analyzing}
-          className="w-full rounded-full bg-[var(--accent)] py-3.5 text-base font-semibold text-[var(--accent-ink)] disabled:opacity-60"
+          className="btn-primary w-full disabled:opacity-60"
         >
           Save changes
         </button>
