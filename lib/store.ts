@@ -3,13 +3,13 @@
 import { useSyncExternalStore } from "react";
 import { subscribeStore } from "./events";
 import {
-  DEFAULT_ENDPOINT,
   DEFAULT_GOAL,
-  DEFAULT_MODEL,
+  defaultProviderConfig,
   loadMeals,
   loadSettings,
 } from "./storage";
 import { DEFAULT_LOCALE } from "./i18n/locales";
+import { DEFAULT_PROVIDER, PROVIDERS } from "./providers";
 import type { Meal, Settings } from "./types";
 
 let mealsSnap = "[]";
@@ -29,9 +29,10 @@ function settingsSnapshot(): string {
 
 const SERVER_SETTINGS: Settings = {
   dailyGoal: DEFAULT_GOAL,
-  apiKey: "",
-  apiEndpoint: DEFAULT_ENDPOINT,
-  model: DEFAULT_MODEL,
+  provider: DEFAULT_PROVIDER,
+  providers: Object.fromEntries(
+    PROVIDERS.map((provider) => [provider, defaultProviderConfig(provider)]),
+  ) as Settings["providers"],
   ephemeralKey: false,
   locale: DEFAULT_LOCALE,
 };

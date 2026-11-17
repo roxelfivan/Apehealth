@@ -6,25 +6,42 @@ import {
   type Locale,
 } from "./i18n/locales";
 import { asNonNegativeNumber, parseFoodItems, roundCalories, roundGrams } from "./nutrition";
-import type { Meal, Settings } from "./types";
+import {
+  DEFAULT_PROVIDER,
+  isProvider,
+  PROVIDER_DEFS,
+  PROVIDERS,
+  type Provider,
+} from "./providers";
+import type { Meal, ProviderConfig, Settings } from "./types";
 
 const MEALS_KEY = "apehealth.meals";
 const GOAL_KEY = "apehealth.dailyGoal";
-const ENDPOINT_KEY = "apehealth.apiEndpoint";
-const MODEL_KEY = "apehealth.model";
+const PROVIDER_KEY = "apehealth.provider";
+const PROVIDERS_KEY = "apehealth.providers";
 const EPHEMERAL_KEY = "apehealth.ephemeralKey";
 const LOCALE_KEY = "apehealth.locale";
 const API_KEY_LOCAL = "apehealth.apiKey";
 const API_KEY_SESSION = "apehealth.apiKey.session";
 
-export const DEFAULT_ENDPOINT = "https://api.minimax.io/v1";
-export const DEFAULT_MODEL = "MiniMax-M3";
 export const DEFAULT_GOAL = 2000;
-export const MODEL_PRESETS = [
-  "MiniMax-M3",
-  "MiniMax-M3.1-Flash",
-  "MiniMax-M2.7",
-];
+
+/**
+ * Legacy single-provider keys. Read once so existing installs keep their
+ * MiniMax key, then superseded by the per-provider store.
+ */
+const LEGACY_ENDPOINT_KEY = "apehealth.apiEndpoint";
+const LEGACY_MODEL_KEY = "apehealth.model";
+
+export function defaultProviderConfig(provider: Provider): ProviderConfig {
+  const def = PROVIDER_DEFS[provider];
+  return { apiKey: "", apiEndpoint: def.endpoint, model: def.model };
+}
+
+/** Model suggestions for the currently selected provider. */
+export function modelPresets(provider: Provider): string[] {
+  return PROVIDER_DEFS[provider].models;
+}
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -216,6 +233,91 @@ function readApiKey(ephemeral: boolean): string {
   return ephemeral ? fromSession : fromLocal || fromSession;
 }
 
+function readJsonFrom<T>(
+  store: Storage | null,
+  key: string,
+  fallback: T,
+): T {
+  if (!store) return fallback;
+  try {
+    const raw = store.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Read a legacy value that was written either as raw text or as JSON.
+ * Older installs stored the endpoint and model with `JSON.stringify`, but
+ * being tolerant here means a hand-edited or partially migrated store still
+ * keeps the user's endpoint and model.
+ */
+function readLegacyString(key: string): string {
+  if (typeof window === "undefined") return "";
+  const raw = localStorage.getItem(key);
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "string" ? parsed : "";
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Keys are stored per provider so switching between Gemini and MiniMax keeps
+ * both credentials around. A key lives either in localStorage (persistent) or
+ * sessionStorage (ephemeral), matching the "forget on tab close" preference.
+ */
+function readProviderKeys(ephemeral: boolean): Record<Provider, string> {
+  const keys = Object.fromEntries(
+    PROVIDERS.map((provider) => [provider, ""]),
+  ) as Record<Provider, string>;
+
+  const local = readJsonFrom<Partial<Record<Provider, string>>>(
+    typeof window === "undefined" ? null : localStorage,
+    `${PROVIDERS_KEY}.keys`,
+    {},
+  );
+  const session = readJsonFrom<Partial<Record<Provider, string>>>(
+    typeof window === "undefined" ? null : sessionStorage,
+    `${PROVIDERS_KEY}.keys.session`,
+    {},
+  );
+
+  for (const provider of PROVIDERS) {
+    const fromLocal = typeof local[provider] === "string" ? local[provider] : "";
+    const fromSession =
+      typeof session[provider] === "string" ? session[provider] : "";
+    // Ephemeral keys live in sessionStorage and win while the flag is on.
+    keys[provider] = ephemeral
+      ? fromSession || fromLocal
+      : fromLocal || fromSession;
+  }
+
+  // Legacy single-key storage: it always belonged to MiniMax.
+  const legacy = readApiKey(ephemeral);
+  if (legacy && !keys.minimax) keys.minimax = legacy;
+
+  return keys;
+}
+
+function writeProviderKeys(
+  keys: Record<Provider, string>,
+  ephemeral: boolean,
+): void {
+  const payload = JSON.stringify(keys);
+  if (ephemeral) {
+    localStorage.removeItem(`${PROVIDERS_KEY}.keys`);
+    sessionStorage.setItem(`${PROVIDERS_KEY}.keys.session`, payload);
+  } else {
+    sessionStorage.removeItem(`${PROVIDERS_KEY}.keys.session`);
+    localStorage.setItem(`${PROVIDERS_KEY}.keys`, payload);
+  }
+}
+
 /** Persisted user choice wins; otherwise fall back to the browser language. */
 export function loadLocale(): Locale {
   const stored = readJson<unknown>(LOCALE_KEY, null);
@@ -237,13 +339,60 @@ export function setLocale(locale: Locale): void {
   emitStoreChange();
 }
 
+function loadProviderConfigs(): Record<Provider, ProviderConfig> {
+  const configs = Object.fromEntries(
+    PROVIDERS.map((provider) => [provider, defaultProviderConfig(provider)]),
+  ) as Record<Provider, ProviderConfig>;
+
+  const stored = readJson<Partial<Record<Provider, Partial<ProviderConfig>>>>(
+    PROVIDERS_KEY,
+    {},
+  );
+  for (const provider of PROVIDERS) {
+    const entry = stored[provider];
+    if (!entry || typeof entry !== "object") continue;
+    const fallback = configs[provider];
+    configs[provider] = {
+      apiKey:
+        typeof entry.apiKey === "string" ? entry.apiKey : fallback.apiKey,
+      apiEndpoint:
+        typeof entry.apiEndpoint === "string" && entry.apiEndpoint.trim()
+          ? entry.apiEndpoint
+          : fallback.apiEndpoint,
+      model:
+        typeof entry.model === "string" && entry.model.trim()
+          ? entry.model
+          : fallback.model,
+    };
+  }
+
+  // Migrate the legacy MiniMax endpoint/model for existing installs.
+  const legacyEndpoint = readLegacyString(LEGACY_ENDPOINT_KEY);
+  const legacyModel = readLegacyString(LEGACY_MODEL_KEY);
+  if (legacyEndpoint && !stored.minimax?.apiEndpoint) {
+    configs.minimax.apiEndpoint = legacyEndpoint;
+  }
+  if (legacyModel && !stored.minimax?.model) {
+    configs.minimax.model = legacyModel;
+  }
+
+  return configs;
+}
+
 export function loadSettings(): Settings {
   const ephemeralKey = readJson<boolean>(EPHEMERAL_KEY, false);
+  const provider = isProvider(readJson<unknown>(PROVIDER_KEY, null))
+    ? (readJson<Provider>(PROVIDER_KEY, DEFAULT_PROVIDER) as Provider)
+    : DEFAULT_PROVIDER;
+  const providers = loadProviderConfigs();
+  const keys = readProviderKeys(ephemeralKey);
+  for (const id of PROVIDERS) {
+    providers[id].apiKey = keys[id];
+  }
   return {
     dailyGoal: Number(readJson<number>(GOAL_KEY, DEFAULT_GOAL)) || DEFAULT_GOAL,
-    apiKey: readApiKey(ephemeralKey),
-    apiEndpoint: readJson<string>(ENDPOINT_KEY, DEFAULT_ENDPOINT) || DEFAULT_ENDPOINT,
-    model: readJson<string>(MODEL_KEY, DEFAULT_MODEL) || DEFAULT_MODEL,
+    provider,
+    providers,
     ephemeralKey,
     locale: loadLocale(),
   };
@@ -251,21 +400,33 @@ export function loadSettings(): Settings {
 
 export function saveSettings(settings: Settings): void {
   localStorage.setItem(GOAL_KEY, JSON.stringify(settings.dailyGoal));
-  localStorage.setItem(ENDPOINT_KEY, JSON.stringify(settings.apiEndpoint.trim() || DEFAULT_ENDPOINT));
-  localStorage.setItem(MODEL_KEY, JSON.stringify(settings.model.trim() || DEFAULT_MODEL));
+  localStorage.setItem(PROVIDER_KEY, JSON.stringify(settings.provider));
   localStorage.setItem(EPHEMERAL_KEY, JSON.stringify(settings.ephemeralKey));
   saveLocale(settings.locale);
 
-  const key = settings.apiKey.trim();
-  if (settings.ephemeralKey) {
-    localStorage.removeItem(API_KEY_LOCAL);
-    if (key) sessionStorage.setItem(API_KEY_SESSION, key);
-    else sessionStorage.removeItem(API_KEY_SESSION);
-  } else {
-    sessionStorage.removeItem(API_KEY_SESSION);
-    if (key) localStorage.setItem(API_KEY_LOCAL, key);
-    else localStorage.removeItem(API_KEY_LOCAL);
+  const configs: Partial<Record<Provider, Partial<ProviderConfig>>> = {};
+  for (const id of PROVIDERS) {
+    const config = settings.providers[id];
+    if (!config) continue;
+    configs[id] = {
+      apiEndpoint:
+        config.apiEndpoint.trim() || PROVIDER_DEFS[id].endpoint,
+      model: config.model.trim() || PROVIDER_DEFS[id].model,
+    };
   }
+  localStorage.setItem(PROVIDERS_KEY, JSON.stringify(configs));
+
+  const keys = Object.fromEntries(
+    PROVIDERS.map((id) => [id, settings.providers[id]?.apiKey.trim() ?? ""]),
+  ) as Record<Provider, string>;
+  writeProviderKeys(keys, settings.ephemeralKey);
+
+  // Drop the legacy single-key entries now that both are migrated.
+  localStorage.removeItem(API_KEY_LOCAL);
+  sessionStorage.removeItem(API_KEY_SESSION);
+  localStorage.removeItem(LEGACY_ENDPOINT_KEY);
+  localStorage.removeItem(LEGACY_MODEL_KEY);
+
   emitStoreChange();
 }
 
@@ -285,6 +446,8 @@ export function mealsForDay(meals: Meal[], day: string): Meal[] {
   });
 }
 
+/** True when the active provider has an API key configured. */
 export function hasApiKey(settings: Settings = loadSettings()): boolean {
-  return settings.apiKey.trim().length > 0;
+  const config = settings.providers[settings.provider];
+  return (config?.apiKey ?? "").trim().length > 0;
 }

@@ -7,9 +7,10 @@ import { CameraIcon, ImageIcon } from "@/components/icons";
 import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { compressDataUrlForStorage, fileToApiDataUrl } from "@/lib/image";
-import { analyzeMealPhoto } from "@/lib/minimax";
+import { analyzeMealPhoto } from "@/lib/analyze";
 import { useTranslator } from "@/lib/i18n/useTranslator";
 import { addMeal, hasApiKey, saveSettings, StorageFullError } from "@/lib/storage";
+import { PROVIDER_DEFS } from "@/lib/providers";
 import { useSettings } from "@/lib/store";
 import type { AnalyzeResult } from "@/lib/types";
 
@@ -19,6 +20,7 @@ export function AddMeal() {
   const router = useRouter();
   const settings = useSettings();
   const { t } = useTranslator();
+  const providerLabel = PROVIDER_DEFS[settings.provider].label;
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ export function AddMeal() {
     setError(null);
     if (!hasApiKey(settings)) {
       setSettingsOpen(true);
-      setError(t("errors.needApiKey"));
+      setError(t("errors.needApiKey", { provider: providerLabel }));
       return;
     }
     try {
@@ -150,7 +152,9 @@ export function AddMeal() {
 
       {step === "pick" && (
         <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4">
-          <p className="text-center text-[var(--muted)]">{t("add.pickBody")}</p>
+          <p className="text-center text-[var(--muted)]">
+            {t("add.pickBody", { provider: providerLabel })}
+          </p>
           <button
             type="button"
             onClick={() => cameraRef.current?.click()}
@@ -203,7 +207,7 @@ export function AddMeal() {
             <img src={image} alt="" className="h-full w-full object-cover" />
           </div>
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-          <p className="text-[var(--muted)]">{t("add.analyzing")}</p>
+          <p className="text-[var(--muted)]">{t("add.analyzing", { provider: providerLabel })}</p>
         </div>
       )}
 

@@ -1,13 +1,14 @@
 {
   "name": "apehealth",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:i18n": "tsx scripts/verify-i18n.mts"
+    "verify:i18n": "tsx scripts/verify-i18n.mts",
+    "verify:storage": "tsx scripts/verify-storage.mts"
   },
   "dependencies": {
     "next": "16.4.6",

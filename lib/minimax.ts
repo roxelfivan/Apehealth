@@ -7,7 +7,10 @@ import {
   sumItemGrams,
 } from "./nutrition";
 import { translate, type Locale } from "./i18n/translate";
-import type { AnalyzeResult, Confidence, Settings } from "./types";
+import { PROVIDER_DEFS } from "./providers";
+import type { AnalyzeResult, Confidence, ProviderConfig } from "./types";
+
+const PROVIDER = PROVIDER_DEFS.minimax.label;
 
 /**
  * Prompt sent to MiniMax. The response language is driven by the user's
@@ -30,7 +33,7 @@ function completionsUrl(endpoint: string): string {
   return `${trimmed}/chat/completions`;
 }
 
-function assertSafeEndpoint(endpoint: string, locale: Locale): string {
+export function assertSafeEndpoint(endpoint: string, locale: Locale): string {
   const url = completionsUrl(endpoint);
   let parsed: URL;
   try {
@@ -61,7 +64,7 @@ function extractJson(text: string, locale: Locale): unknown {
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start === -1 || end === -1) {
-    throw new Error(translate(locale, "errors.noJson"));
+    throw new Error(translate(locale, "errors.noJson", { provider: PROVIDER }));
   }
   return JSON.parse(raw.slice(start, end + 1));
 }
@@ -97,21 +100,21 @@ function messageText(message: {
   return "";
 }
 
-export async function analyzeMealPhoto(
+export async function analyzeMealPhotoMiniMax(
   imageDataUrl: string,
-  settings: Settings,
+  config: ProviderConfig,
+  locale: Locale,
 ): Promise<AnalyzeResult> {
-  const locale = settings.locale;
-  const apiKey = settings.apiKey.trim();
+  const apiKey = config.apiKey.trim();
   if (!apiKey) {
-    throw new Error(translate(locale, "errors.missingApiKey"));
+    throw new Error(translate(locale, "errors.missingApiKey", { provider: PROVIDER }));
   }
   if (!imageDataUrl.startsWith("data:image/")) {
     throw new Error(translate(locale, "errors.couldNotReadPhoto"));
   }
 
-  const url = assertSafeEndpoint(settings.apiEndpoint, locale);
-  const model = settings.model.trim() || "MiniMax-M3";
+  const url = assertSafeEndpoint(config.apiEndpoint, locale);
+  const model = config.model.trim() || "MiniMax-M3";
   const usesFlash = /m3\.1/i.test(model);
 
   // OpenAI-compatible Chat Completions (same auth as Apeditor: Bearer key).
@@ -167,7 +170,10 @@ export async function analyzeMealPhoto(
     const message =
       payload?.error?.message ||
       payload?.base_resp?.status_msg ||
-      translate(locale, "errors.requestFailed", { status: response.status });
+      translate(locale, "errors.requestFailed", {
+        status: response.status,
+        provider: PROVIDER,
+      });
     throw new Error(message);
   }
 
@@ -175,7 +181,7 @@ export async function analyzeMealPhoto(
     ? messageText(payload.choices[0].message)
     : "";
   if (!content.trim()) {
-    throw new Error(translate(locale, "errors.emptyResponse"));
+    throw new Error(translate(locale, "errors.emptyResponse", { provider: PROVIDER }));
   }
 
   const parsed = extractJson(content, locale) as {
@@ -194,7 +200,7 @@ export async function analyzeMealPhoto(
     asNonNegativeNumber(parsed.calories) ??
     (items.length ? sumItemCalories(items) : null);
   if (calories == null) {
-    throw new Error(translate(locale, "errors.noCalories"));
+    throw new Error(translate(locale, "errors.noCalories", { provider: PROVIDER }));
   }
 
   const protein =

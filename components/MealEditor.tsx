@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import { NutritionBreakdown } from "@/components/NutritionBreakdown";
 import { SettingsModal } from "@/components/SettingsModal";
 import { compressDataUrlForStorage, fileToApiDataUrl } from "@/lib/image";
-import { analyzeMealPhoto } from "@/lib/minimax";
+import { analyzeMealPhoto } from "@/lib/analyze";
 import { useTranslator } from "@/lib/i18n/useTranslator";
+import { PROVIDER_DEFS } from "@/lib/providers";
 import {
   fromDatetimeLocalValue,
   hasApiKey,
@@ -25,6 +26,7 @@ type Props = {
 export function MealEditor({ meal, onClose }: Props) {
   const settings = useSettings();
   const { t } = useTranslator();
+  const providerLabel = PROVIDER_DEFS[settings.provider].label;
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,7 +48,7 @@ export function MealEditor({ meal, onClose }: Props) {
     setError(null);
     if (!hasApiKey(settings)) {
       setSettingsOpen(true);
-      setError(t("errors.needApiKey"));
+      setError(t("errors.needApiKey", { provider: providerLabel }));
       return;
     }
     try {
@@ -149,7 +151,7 @@ export function MealEditor({ meal, onClose }: Props) {
         {analyzing ? (
           <div className="mb-4 flex items-center gap-3 text-sm text-[var(--muted)]">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]" />
-            {t("editor.reEstimating")}
+            {t("editor.reEstimating", { provider: providerLabel })}
           </div>
         ) : (
           <div className="mb-4 flex gap-2">

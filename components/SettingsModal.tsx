@@ -10,11 +10,15 @@ import {
 } from "@/lib/i18n";
 import { useTranslator } from "@/lib/i18n/useTranslator";
 import {
-  DEFAULT_ENDPOINT,
-  DEFAULT_MODEL,
-  MODEL_PRESETS,
+  defaultProviderConfig,
+  modelPresets,
   setLocale,
 } from "@/lib/storage";
+import {
+  PROVIDERS,
+  PROVIDER_DEFS,
+  type Provider,
+} from "@/lib/providers";
 import type { Settings } from "@/lib/types";
 
 type Props = {
@@ -30,7 +34,7 @@ export function SettingsModal({ open, initial, onClose, onSave }: Props) {
     <SettingsForm
       // The locale is excluded from the key so switching the language does not
       // remount the form and discard the rest of the user's draft.
-      key={`${initial.dailyGoal}|${initial.apiEndpoint}|${initial.model}|${initial.ephemeralKey}|${initial.apiKey.length}`}
+      key={`${initial.dailyGoal}|${initial.provider}|${initial.ephemeralKey}|${initial.providers[initial.provider].apiKey.length}|${initial.providers[initial.provider].apiEndpoint}|${initial.providers[initial.provider].model}`}
       initial={initial}
       onClose={onClose}
       onSave={onSave}
@@ -52,6 +56,11 @@ function SettingsForm({
   const [showKey, setShowKey] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [goalError, setGoalError] = useState<string | null>(null);
+
+  // The active provider's config — editing always targets this one.
+  const active = draft.providers[draft.provider];
+  const providerDef = PROVIDER_DEFS[draft.provider];
+  const providerLabel = providerDef.label;
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement as HTMLElement | null;
@@ -91,6 +100,29 @@ function SettingsForm({
     };
   }, [onClose]);
 
+  /** Switch provider, keeping each provider's own key, endpoint and model. */
+  function selectProvider(provider: Provider) {
+    setDraft((prev) => ({
+      ...prev,
+      provider,
+      providers: {
+        ...prev.providers,
+        [provider]: prev.providers[provider] ?? defaultProviderConfig(provider),
+      },
+    }));
+    setShowKey(false);
+  }
+
+  function updateActive(patch: Partial<typeof active>) {
+    setDraft((prev) => ({
+      ...prev,
+      providers: {
+        ...prev.providers,
+        [prev.provider]: { ...prev.providers[prev.provider], ...patch },
+      },
+    }));
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-6">
       <button
@@ -112,13 +144,18 @@ function SettingsForm({
             setGoalError(t("errors.goalRange"));
             return;
           }
-          onSave({
-            ...draft,
-            dailyGoal: goal,
-            apiKey: draft.apiKey.trim(),
-            apiEndpoint: draft.apiEndpoint.trim() || DEFAULT_ENDPOINT,
-            model: draft.model.trim() || DEFAULT_MODEL,
-          });
+          const providers = { ...draft.providers };
+          for (const provider of PROVIDERS) {
+            const config = providers[provider];
+            const fallback = defaultProviderConfig(provider);
+            providers[provider] = {
+              apiKey: (config?.apiKey ?? "").trim(),
+              apiEndpoint:
+                config?.apiEndpoint.trim() || fallback.apiEndpoint,
+              model: config?.model.trim() || fallback.model,
+            };
+          }
+          onSave({ ...draft, dailyGoal: goal, providers });
         }}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
@@ -202,18 +239,45 @@ function SettingsForm({
           ) : null}
         </label>
 
+        <fieldset className="mb-4">
+          <legend className="mb-1.5 block text-sm font-medium">{t("settings.provider")}</legend>
+          <div
+            role="radiogroup"
+            aria-label={t("settings.provider")}
+            className="flex gap-2 rounded-2xl bg-[var(--chip)] p-1"
+          >
+            {PROVIDERS.map((option: Provider) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={draft.provider === option}
+                className={`min-h-11 flex-1 rounded-xl text-sm transition-colors duration-200 ${
+                  draft.provider === option
+                    ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+                onClick={() => selectProvider(option)}
+              >
+                {PROVIDER_DEFS[option].label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--muted)]">{t("settings.providerHint")}</p>
+        </fieldset>
+
         <label className="mb-2 block">
-          <span className="mb-1.5 block text-sm font-medium">{t("settings.apiKey")}</span>
+          <span className="mb-1.5 block text-sm font-medium">
+            {t("settings.apiKey", { provider: providerLabel })}
+          </span>
           <div className="flex gap-2">
             <input
               type={showKey ? "text" : "password"}
               autoComplete="off"
               spellCheck={false}
-              placeholder={t("settings.apiKeyPlaceholder")}
-              value={draft.apiKey}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, apiKey: event.target.value }))
-              }
+              placeholder={t("settings.apiKeyPlaceholder", { provider: providerLabel })}
+              value={active.apiKey}
+              onChange={(event) => updateActive({ apiKey: event.target.value })}
               className="field min-w-0 flex-1 font-mono text-sm"
             />
             <button
@@ -229,14 +293,15 @@ function SettingsForm({
         </label>
         <p className="mb-3 text-xs leading-5 text-[var(--muted)]">
           {tn("settings.apiKeyNote", {
+            provider: providerLabel,
             link: (
               <a
                 className="underline decoration-[var(--accent)] underline-offset-2"
-                href="https://platform.minimax.io/user-center/basic-information/interface-key"
+                href={providerDef.keyUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                platform.minimax.io
+                {providerDef.keyUrlLabel}
               </a>
             ),
           })}
@@ -275,10 +340,8 @@ function SettingsForm({
               <span className="mb-1.5 block text-sm font-medium">{t("settings.apiEndpoint")}</span>
               <input
                 type="url"
-                value={draft.apiEndpoint}
-                onChange={(event) =>
-                  setDraft((prev) => ({ ...prev, apiEndpoint: event.target.value }))
-                }
+                value={active.apiEndpoint}
+                onChange={(event) => updateActive({ apiEndpoint: event.target.value })}
                 className="field font-mono text-sm"
               />
             </label>
@@ -286,14 +349,12 @@ function SettingsForm({
               <span className="mb-1.5 block text-sm font-medium">{t("settings.model")}</span>
               <input
                 list="apehealth-models"
-                value={draft.model}
-                onChange={(event) =>
-                  setDraft((prev) => ({ ...prev, model: event.target.value }))
-                }
+                value={active.model}
+                onChange={(event) => updateActive({ model: event.target.value })}
                 className="field font-mono text-sm"
               />
               <datalist id="apehealth-models">
-                {MODEL_PRESETS.map((model) => (
+                {modelPresets(draft.provider).map((model) => (
                   <option key={model} value={model} />
                 ))}
               </datalist>

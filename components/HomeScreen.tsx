@@ -10,6 +10,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { formatDayLabel } from "@/lib/i18n/format";
 import { useTranslator } from "@/lib/i18n/useTranslator";
 import { hasApiKey, mealsForDay, saveSettings, todayKey } from "@/lib/storage";
+import { PROVIDER_DEFS } from "@/lib/providers";
 import { useMeals, useSettings } from "@/lib/store";
 import { formatGrams, roundGrams } from "@/lib/nutrition";
 import type { Meal } from "@/lib/types";
@@ -156,7 +157,11 @@ export function HomeScreen() {
               onClick={() => setSettingsOpen(true)}
               className="mb-4 w-full rounded-2xl border border-[var(--line)] bg-[var(--chip)] px-4 py-3 text-left text-sm transition-colors duration-200 hover:bg-[var(--card)]"
             >
-              <span className="block font-medium">{t("home.apiKeyTitle")}</span>
+              <span className="block font-medium">
+                {t("home.apiKeyTitle", {
+                  provider: PROVIDER_DEFS[settings.provider].label,
+                })}
+              </span>
               <span className="mt-0.5 block text-[var(--muted)]">{t("home.apiKeyBody")}</span>
             </button>
           ) : null}

@@ -1,4 +1,5 @@
 import type { Locale } from "./i18n/locales";
+import type { Provider } from "./providers";
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -33,11 +34,19 @@ export type AnalyzeResult = {
   confidence: Confidence;
 };
 
-export type Settings = {
-  dailyGoal: number;
+/** Per-provider credentials and routing. Each provider keeps its own key. */
+export type ProviderConfig = {
   apiKey: string;
   apiEndpoint: string;
   model: string;
+};
+
+export type Settings = {
+  dailyGoal: number;
+  /** Which provider handles analysis right now. */
+  provider: Provider;
+  /** Config for every provider, so switching keeps each one's key and model. */
+  providers: Record<Provider, ProviderConfig>;
   ephemeralKey: boolean;
   locale: Locale;
 };

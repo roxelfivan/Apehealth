@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   applicationName: "Apehealth",
   title: "Apehealth",
   description:
-    "Snap a meal photo. MiniMax estimates calories. Everything stays on this device.",
+    "Snap a meal photo. Gemini or MiniMax estimates calories. Everything stays on this device.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
