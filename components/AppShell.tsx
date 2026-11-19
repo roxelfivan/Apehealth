@@ -33,7 +33,7 @@ export function AppShell({ current, title, subtitle, onOpenSettings, children }:
 
       <header className="mb-5 flex items-center justify-between gap-3 lg:mb-8">
         <div className="flex min-w-0 items-center gap-3">
-          {current === "home" ? <AppLogo className="h-11 w-auto shrink-0 select-none" /> : null}
+          {current === "home" ? <AppLogo className="h-12 w-auto shrink-0 select-none sm:h-14" /> : null}
           <div className="min-w-0">
             {subtitle ? (
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
